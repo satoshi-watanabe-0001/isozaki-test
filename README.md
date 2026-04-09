@@ -1,62 +1,173 @@
-# user-auth-app
+# ユーザ認証アプリケーション
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+Quarkus フレームワークを使用したユーザ認証アプリケーションです。
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+## 概要
 
-## Running the application in dev mode
+- **フレームワーク**: Quarkus（Java 17）
+- **ビルドツール**: Gradle
+- **データベース**: PostgreSQL 16（UTF-8）
+- **セッション管理**: Redis 7
+- **コンテナ**: Docker（マルチステージビルド）
 
-You can run your application in dev mode that enables live coding using:
+## 機能
 
-```shell script
+- JSON形式のログインエンドポイント（`POST /api/login`）
+- メールアドレスとパスワードによるユーザ認証
+- bcrypt（コストファクタ12）によるパスワードハッシュ化
+- Redis によるセッション管理（TTL: 30分）
+- UUIDv7 によるユーザID生成
+
+## ユーザデータ構造
+
+| カラム名 | 型 | 説明 |
+|---|---|---|
+| user_id | UUID | ユーザID（UUIDv7、主キー） |
+| username | VARCHAR(255) | ユーザ名（日本語入力可） |
+| email | VARCHAR(255) | メールアドレス（重複不可） |
+| password_hash | VARCHAR(255) | bcryptハッシュ化パスワード |
+| created_at | TIMESTAMP | 作成日時 |
+| updated_at | TIMESTAMP | 更新日時 |
+
+## 開発環境でのアプリケーション起動
+
+開発モード（ライブコーディング対応）で起動するには以下を実行します:
+
+```shell
 ./gradlew quarkusDev
 ```
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+> **注意:** 開発モードではDev UIが利用可能です: <http://localhost:8080/q/dev/>
 
-## Packaging and running the application
+## Docker環境での起動
 
-The application can be packaged using:
+Docker Compose を使用してアプリケーション、PostgreSQL、Redisを一括起動できます:
 
-```shell script
+```shell
+docker-compose up --build
+```
+
+### サービス構成
+
+| サービス | ポート | 説明 |
+|---|---|---|
+| app | 8080 | Quarkusアプリケーション |
+| postgres | 5432 | PostgreSQLデータベース |
+| redis | 6379 | Redisセッションストア |
+
+## ビルド
+
+アプリケーションのビルド:
+
+```shell
 ./gradlew build
 ```
 
-It produces the `quarkus-run.jar` file in the `build/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `build/quarkus-app/lib/` directory.
+`build/quarkus-app/` ディレクトリに `quarkus-run.jar` が生成されます。
 
-The application is now runnable using `java -jar build/quarkus-app/quarkus-run.jar`.
+uber-jar としてビルドする場合:
 
-If you want to build an _über-jar_, execute the following command:
-
-```shell script
+```shell
 ./gradlew build -Dquarkus.package.jar.type=uber-jar
 ```
 
-The application, packaged as an _über-jar_, is now runnable using `java -jar build/*-runner.jar`.
+## テスト
 
-## Creating a native executable
+単体テストの実行:
 
-You can create a native executable using:
-
-```shell script
-./gradlew build -Dquarkus.native.enabled=true
+```shell
+./gradlew test
 ```
 
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
+カバレッジレポートの生成:
 
-```shell script
-./gradlew build -Dquarkus.native.enabled=true -Dquarkus.native.container-build=true
+```shell
+./gradlew jacocoTestReport
 ```
 
-You can then execute your native executable with: `./build/user-auth-app-1.0.0-SNAPSHOT-runner`
+カバレッジレポートは `build/reports/jacoco/test/html/index.html` で確認できます。
 
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/gradle-tooling>.
+カバレッジ検証（C1カバレッジ90%以上）:
 
-## Related Guides
+```shell
+./gradlew jacocoTestCoverageVerification
+```
 
-- Hibernate ORM with Panache ([guide](https://quarkus.io/guides/hibernate-orm-panache)): Simplify your persistence code for Hibernate ORM via the active record or the repository pattern
-- REST Jackson ([guide](https://quarkus.io/guides/rest#json-serialisation)): Jackson serialization support for Quarkus REST. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it
-- Hibernate Validator ([guide](https://quarkus.io/guides/validation)): Validate object properties (field, getter) and method parameters for your beans (REST, CDI, Jakarta Persistence)
-- Redis Client ([guide](https://quarkus.io/guides/redis)): Connect to Redis in either imperative or reactive style
-- JDBC Driver - PostgreSQL ([guide](https://quarkus.io/guides/datasource)): Connect to the PostgreSQL database via JDBC
+## APIエンドポイント
+
+### ログイン
+
+```
+POST /api/login
+Content-Type: application/json
+```
+
+**リクエスト:**
+
+```json
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+```
+
+**成功レスポンス（200 OK）:**
+
+```json
+{
+  "sessionId": "生成されたセッションID",
+  "userId": "ユーザのUUID",
+  "username": "ユーザ名"
+}
+```
+
+**認証失敗レスポンス（401 Unauthorized）:**
+
+```json
+{
+  "errorCode": "AUTHENTICATION_FAILED",
+  "message": "メールアドレスまたはパスワードが正しくありません"
+}
+```
+
+**バリデーションエラーレスポンス（400 Bad Request）:**
+
+```json
+{
+  "errorCode": "VALIDATION_ERROR",
+  "message": "エラーメッセージ"
+}
+```
+
+## プロジェクト構成
+
+```
+src/main/java/com/isozaki/auth/
+├── dto/                    # データ転送オブジェクト
+│   ├── ErrorResponse.java
+│   ├── LoginRequest.java
+│   └── LoginResponse.java
+├── entity/                 # JPAエンティティ
+│   └── UserEntity.java
+├── exception/              # 例外クラス
+│   ├── AuthenticationException.java
+│   └── GlobalExceptionHandler.java
+├── repository/             # リポジトリ
+│   └── UserRepository.java
+├── resource/               # RESTリソース
+│   └── LoginResource.java
+└── service/                # ビジネスロジック
+    ├── AuthService.java
+    ├── PasswordService.java
+    ├── SessionService.java
+    └── UuidService.java
+```
+
+## 技術スタック
+
+- [Quarkus](https://quarkus.io/) - Javaフレームワーク
+- [Hibernate ORM with Panache](https://quarkus.io/guides/hibernate-orm-panache) - ORM
+- [REST Jackson](https://quarkus.io/guides/rest#json-serialisation) - JSONシリアライゼーション
+- [Hibernate Validator](https://quarkus.io/guides/validation) - バリデーション
+- [Redis Client](https://quarkus.io/guides/redis) - Redisクライアント
+- [JDBC Driver - PostgreSQL](https://quarkus.io/guides/datasource) - PostgreSQLドライバ

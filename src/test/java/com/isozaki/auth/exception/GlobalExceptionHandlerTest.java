@@ -21,6 +21,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -106,6 +107,12 @@ class GlobalExceptionHandlerTest {
             // メッセージに両方のエラーが含まれていることを確認
             String message = errorResponse.getMessage();
             assertNotNull(message);
+            assertTrue(message.contains("メールアドレスは必須です"),
+                    "メッセージに'メールアドレスは必須です'が含まれていること");
+            assertTrue(message.contains("パスワードは必須です"),
+                    "メッセージに'パスワードは必須です'が含まれていること");
+            assertTrue(message.contains("; "),
+                    "メッセージがセミコロンで結合されていること");
         }
 
         @Test

@@ -12,6 +12,7 @@ import com.isozaki.auth.entity.UserEntity;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * ユーザデータへのアクセスを提供するリポジトリ
@@ -19,7 +20,7 @@ import java.util.Optional;
  * @since 1.0
  */
 @ApplicationScoped
-public class UserRepository implements PanacheRepositoryBase<UserEntity, String> {
+public class UserRepository implements PanacheRepositoryBase<UserEntity, UUID> {
 
     /**
      * メールアドレスでユーザを検索する

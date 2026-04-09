@@ -23,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -62,7 +63,7 @@ class AuthServiceTest {
      */
     private UserEntity createTestUser() {
         UserEntity user = new UserEntity();
-        user.userId = "01908b7e-1234-7000-8000-000000000001";
+        user.userId = UUID.fromString("01908b7e-1234-7000-8000-000000000001");
         user.username = "テストユーザ";
         user.email = "test@example.com";
         user.passwordHash = "$2a$12$hashedpassword";
@@ -85,7 +86,7 @@ class AuthServiceTest {
 
             when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
             when(passwordService.verifyPassword("password123", user.passwordHash)).thenReturn(true);
-            when(sessionService.createSession(user.userId)).thenReturn(expectedSessionId);
+            when(sessionService.createSession(user.userId.toString())).thenReturn(expectedSessionId);
 
             // When
             LoginResponse response = authService.login(request);
@@ -93,12 +94,12 @@ class AuthServiceTest {
             // Then
             assertNotNull(response);
             assertEquals(expectedSessionId, response.getSessionId());
-            assertEquals(user.userId, response.getUserId());
+            assertEquals(user.userId.toString(), response.getUserId());
             assertEquals(user.username, response.getUsername());
 
             verify(userRepository).findByEmail("test@example.com");
             verify(passwordService).verifyPassword("password123", user.passwordHash);
-            verify(sessionService).createSession(user.userId);
+            verify(sessionService).createSession(user.userId.toString());
         }
     }
 

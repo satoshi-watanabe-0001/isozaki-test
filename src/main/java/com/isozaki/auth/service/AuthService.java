@@ -72,7 +72,7 @@ public class AuthService {
             throw new AuthenticationException("メールアドレスまたはパスワードが正しくありません");
         }
 
-        String sessionId = sessionService.createSession(user.userId);
-        return new LoginResponse(sessionId, user.userId, user.username);
+        String sessionId = sessionService.createSession(user.userId.toString());
+        return new LoginResponse(sessionId, user.userId.toString(), user.username);
     }
 }

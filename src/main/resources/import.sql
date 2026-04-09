@@ -9,7 +9,7 @@
 -- テスト用ユーザデータ（パスワード: password123）
 INSERT INTO users (user_id, username, email, password_hash, created_at, updated_at)
 VALUES (
-    '01908b7e-1234-7000-8000-000000000001',
+    CAST('01908b7e-1234-7000-8000-000000000001' AS uuid),
     'テストユーザ',
     'test@example.com',
     '$2a$12$LJ3m4ys3uz2YHjYhBMUL5u0GNf9SmFRNkPlCz.Nzh5131MKmVaKMG',

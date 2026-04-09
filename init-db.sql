@@ -8,8 +8,8 @@
 
 -- usersテーブルの作成
 CREATE TABLE IF NOT EXISTS users (
-    -- ユーザID（UUIDv7形式、プライマリキー）
-    user_id VARCHAR(36) NOT NULL PRIMARY KEY,
+    -- ユーザID（UUIDv7形式、PostgreSQL UUID型、プライマリキー）
+    user_id UUID NOT NULL PRIMARY KEY,
 
     -- ユーザ名（日本語入力可、UTF-8対応）
     username VARCHAR(255) NOT NULL,

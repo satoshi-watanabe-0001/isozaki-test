@@ -14,6 +14,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.UUID;
 
 /**
  * ユーザ情報を保持するエンティティ
@@ -28,11 +29,11 @@ import java.time.Instant;
 public class UserEntity extends PanacheEntityBase {
 
     /**
-     * ユーザID（UUIDv7形式の文字列）
+     * ユーザID（UUIDv7形式）
      */
     @Id
-    @Column(name = "user_id", length = 36, nullable = false)
-    public String userId;
+    @Column(name = "user_id", nullable = false, columnDefinition = "uuid")
+    public UUID userId;
 
     /**
      * ユーザ名（日本語入力可）
