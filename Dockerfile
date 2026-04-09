@@ -9,6 +9,7 @@ RUN chmod +x ./gradlew && ./gradlew build -Dquarkus.package.jar.type=uber-jar -x
 
 ## Stage 2: 実行ステージ
 FROM eclipse-temurin:17-jre-alpine
+RUN apk add --no-cache curl
 WORKDIR /app
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 COPY --from=build /app/build/*-runner.jar /app/application.jar
