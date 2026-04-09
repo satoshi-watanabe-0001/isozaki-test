@@ -33,6 +33,7 @@ jobs:
         run: |
           chmod +x ./e2e/e2e-test.sh
           ./e2e/e2e-test.sh
+        timeout-minutes: 5
 
       - name: アプリケーションログの出力（失敗時）
         if: failure()

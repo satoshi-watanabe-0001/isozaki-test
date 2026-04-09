@@ -75,26 +75,23 @@ assert_json_value() {
 
 # アプリケーションのヘルスチェック待機
 wait_for_app() {
-    local max_retries=30
+    local max_retries=60
     local retry=0
     echo "アプリケーションの起動を待機中..."
     while [ $retry -lt $max_retries ]; do
-        if curl -sf "${BASE_URL}/api/login" -X POST -H "Content-Type: application/json" -d '{}' > /dev/null 2>&1; then
-            echo "アプリケーションが起動しました"
-            return 0
-        fi
-        # 400/401でもレスポンスがあれば起動済み
         local status
-        status=$(curl -s -o /dev/null -w "%{http_code}" "${BASE_URL}/api/login" -X POST -H "Content-Type: application/json" -d '{}' 2>/dev/null || echo "000")
-        if [ "$status" != "000" ]; then
+        status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "${BASE_URL}/api/login" -X POST -H "Content-Type: application/json" -d '{}' 2>/dev/null) || true
+        # 有効なHTTPレスポンス（1xx〜5xx）があれば起動済み
+        if [ -n "$status" ] && [ "$status" != "000" ] && [ "$status" -ge 100 ] 2>/dev/null; then
             echo "アプリケーションが起動しました (HTTP ${status})"
             return 0
         fi
         retry=$((retry + 1))
-        echo "  リトライ ${retry}/${max_retries}..."
-        sleep 2
+        echo "  リトライ ${retry}/${max_retries}... (status=${status})"
+        sleep 3
     done
     echo "エラー: アプリケーションの起動がタイムアウトしました"
+    docker compose logs app 2>/dev/null || true
     return 1
 }
 
