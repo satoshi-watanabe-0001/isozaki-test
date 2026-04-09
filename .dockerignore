@@ -1,5 +1,7 @@
-*
-!build/*-runner
-!build/*-runner.jar
-!build/lib/*
-!build/quarkus-app/*
+.git
+.github
+.gradle
+build
+e2e
+*.md
+LICENSE
