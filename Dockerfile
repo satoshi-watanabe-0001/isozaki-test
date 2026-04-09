@@ -1,10 +1,11 @@
 ## Stage 1: ビルドステージ
-FROM gradle:8.5-jdk17 AS build
+FROM eclipse-temurin:17-jdk AS build
 WORKDIR /app
-COPY build.gradle settings.gradle gradle.properties ./
+COPY gradlew ./
 COPY gradle ./gradle
+COPY build.gradle settings.gradle gradle.properties ./
 COPY src ./src
-RUN gradle build -Dquarkus.package.jar.type=uber-jar -x test --no-daemon
+RUN chmod +x ./gradlew && ./gradlew build -Dquarkus.package.jar.type=uber-jar -x test --no-daemon
 
 ## Stage 2: 実行ステージ
 FROM eclipse-temurin:17-jre-alpine
