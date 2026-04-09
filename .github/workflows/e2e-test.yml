@@ -37,10 +37,10 @@ jobs:
               CAST('01908b7e-1234-7000-8000-000000000001' AS uuid),
               'テストユーザ',
               'test@example.com',
-              '$2a$12$LJ3m4ys3uz2YHjYhBMUL5u0GNf9SmFRNkPlCz.Nzh5131MKmVaKMG',
+              '$2a$12$7VmZoxX4W.QSvQelvMWgHOYRzd0BJzdUiuUOCrlkaedQC1.yte/y2',
               CURRENT_TIMESTAMP,
               CURRENT_TIMESTAMP
-            ) ON CONFLICT (email) DO NOTHING;
+            ) ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash;
           EOSQL
 
       - name: E2Eテスト実行
