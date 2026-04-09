@@ -29,6 +29,20 @@ jobs:
       - name: サービスの起動状態を確認
         run: docker compose ps
 
+      - name: テストデータ投入（Hibernate schema更新後）
+        run: |
+          docker compose exec -T postgres psql -U postgres -d userauth <<'EOSQL'
+            INSERT INTO users (user_id, username, email, password_hash, created_at, updated_at)
+            VALUES (
+              CAST('01908b7e-1234-7000-8000-000000000001' AS uuid),
+              'テストユーザ',
+              'test@example.com',
+              '$2a$12$LJ3m4ys3uz2YHjYhBMUL5u0GNf9SmFRNkPlCz.Nzh5131MKmVaKMG',
+              CURRENT_TIMESTAMP,
+              CURRENT_TIMESTAMP
+            ) ON CONFLICT (email) DO NOTHING;
+          EOSQL
+
       - name: E2Eテスト実行
         run: |
           chmod +x ./e2e/e2e-test.sh
