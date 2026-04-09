@@ -29,7 +29,7 @@ jobs:
       - name: サービスの起動状態を確認
         run: docker compose ps
 
-      - name: テストデータ投入（Hibernate schema更新後）
+      - name: テストデータ投入
         run: |
           docker compose exec -T postgres psql -U postgres -d userauth <<'EOSQL'
             INSERT INTO users (user_id, username, email, password_hash, created_at, updated_at)
