@@ -43,6 +43,14 @@ jobs:
         if: failure()
         run: docker compose logs
 
+      - name: テストレポートのアップロード
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-report
+          path: e2e/reports/
+          retention-days: 7
+
       - name: Docker Composeの停止
         if: always()
         run: docker compose down -v

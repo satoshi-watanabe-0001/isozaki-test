@@ -9,9 +9,19 @@
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://localhost:8080}"
+REPORT_DIR="${REPORT_DIR:-e2e/reports}"
+REPORT_FILE="${REPORT_DIR}/e2e-test-report.txt"
 PASS=0
 FAIL=0
 TOTAL=0
+
+# レポートディレクトリの作成
+mkdir -p "${REPORT_DIR}"
+
+# 標準出力とレポートファイルの両方に出力する関数
+log() {
+    echo "$1" | tee -a "${REPORT_FILE}"
+}
 
 # ----------------------------------------------------------------------------
 # ユーティリティ関数
@@ -27,11 +37,11 @@ record_result() {
     TOTAL=$((TOTAL + 1))
     if [ "$expected_status" = "$actual_status" ]; then
         PASS=$((PASS + 1))
-        echo "  ✓ PASS: ${test_name} (HTTP ${actual_status})"
+        log "  ✓ PASS: ${test_name} (HTTP ${actual_status})"
     else
         FAIL=$((FAIL + 1))
-        echo "  ✗ FAIL: ${test_name} (期待: HTTP ${expected_status}, 実際: HTTP ${actual_status})"
-        echo "    レスポンス: ${body}"
+        log "  ✗ FAIL: ${test_name} (期待: HTTP ${expected_status}, 実際: HTTP ${actual_status})"
+        log "    レスポンス: ${body}"
     fi
 }
 
@@ -46,11 +56,11 @@ assert_json_field() {
     value=$(echo "$body" | jq -r ".${field}" 2>/dev/null)
     if [ "$value" != "null" ] && [ -n "$value" ]; then
         PASS=$((PASS + 1))
-        echo "  ✓ PASS: ${test_name} (${field}=${value})"
+        log "  ✓ PASS: ${test_name} (${field}=${value})"
     else
         FAIL=$((FAIL + 1))
-        echo "  ✗ FAIL: ${test_name} (${field}が存在しないか空)"
-        echo "    レスポンス: ${body}"
+        log "  ✗ FAIL: ${test_name} (${field}が存在しないか空)"
+        log "    レスポンス: ${body}"
     fi
 }
 
@@ -66,10 +76,10 @@ assert_json_value() {
     value=$(echo "$body" | jq -r ".${field}" 2>/dev/null)
     if [ "$value" = "$expected" ]; then
         PASS=$((PASS + 1))
-        echo "  ✓ PASS: ${test_name} (${field}=${value})"
+        log "  ✓ PASS: ${test_name} (${field}=${value})"
     else
         FAIL=$((FAIL + 1))
-        echo "  ✗ FAIL: ${test_name} (期待: ${expected}, 実際: ${value})"
+        log "  ✗ FAIL: ${test_name} (期待: ${expected}, 実際: ${value})"
     fi
 }
 
@@ -114,18 +124,22 @@ do_post() {
 # テストケース
 # ============================================================================
 
-echo "============================================"
-echo "E2Eテスト開始"
-echo "対象: ${BASE_URL}"
-echo "============================================"
+# レポートファイルの初期化
+> "${REPORT_FILE}"
+
+log "============================================"
+log "E2Eテスト開始"
+log "対象: ${BASE_URL}"
+log "実行日時: $(date '+%Y-%m-%d %H:%M:%S %Z')"
+log "============================================"
 
 # アプリケーション起動待機
 wait_for_app
 
-echo ""
-echo "--------------------------------------------"
-echo "テスト1: 正常ログイン"
-echo "--------------------------------------------"
+log ""
+log "--------------------------------------------"
+log "テスト1: 正常ログイン"
+log "--------------------------------------------"
 result=$(do_post "${BASE_URL}/api/login" '{"email":"test@example.com","password":"password123"}')
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
@@ -137,60 +151,60 @@ assert_json_value "正常ログイン - usernameがテストユーザ" "$body" "
 # セッションIDを保存（後続テストで使用可能）
 SESSION_ID=$(echo "$body" | jq -r ".sessionId" 2>/dev/null)
 
-echo ""
-echo "--------------------------------------------"
-echo "テスト2: パスワード誤りでログイン失敗"
-echo "--------------------------------------------"
+log ""
+log "--------------------------------------------"
+log "テスト2: パスワード誤りでログイン失敗"
+log "--------------------------------------------"
 result=$(do_post "${BASE_URL}/api/login" '{"email":"test@example.com","password":"wrongpassword"}')
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "パスワード誤り - ステータスコード401" "401" "$status" "$body"
 assert_json_value "パスワード誤り - エラーコード" "$body" "errorCode" "AUTHENTICATION_FAILED"
 
-echo ""
-echo "--------------------------------------------"
-echo "テスト3: 存在しないユーザでログイン失敗"
-echo "--------------------------------------------"
+log ""
+log "--------------------------------------------"
+log "テスト3: 存在しないユーザでログイン失敗"
+log "--------------------------------------------"
 result=$(do_post "${BASE_URL}/api/login" '{"email":"notexist@example.com","password":"password123"}')
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "存在しないユーザ - ステータスコード401" "401" "$status" "$body"
 assert_json_value "存在しないユーザ - エラーコード" "$body" "errorCode" "AUTHENTICATION_FAILED"
 
-echo ""
-echo "--------------------------------------------"
-echo "テスト4: 空のリクエストボディでバリデーションエラー"
-echo "--------------------------------------------"
+log ""
+log "--------------------------------------------"
+log "テスト4: 空のリクエストボディでバリデーションエラー"
+log "--------------------------------------------"
 result=$(do_post "${BASE_URL}/api/login" '{"email":"","password":""}')
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "空フィールド - ステータスコード400" "400" "$status" "$body"
 assert_json_value "空フィールド - エラーコード" "$body" "errorCode" "VALIDATION_ERROR"
 
-echo ""
-echo "--------------------------------------------"
-echo "テスト5: 不正なメールアドレス形式でバリデーションエラー"
-echo "--------------------------------------------"
+log ""
+log "--------------------------------------------"
+log "テスト5: 不正なメールアドレス形式でバリデーションエラー"
+log "--------------------------------------------"
 result=$(do_post "${BASE_URL}/api/login" '{"email":"invalid-email","password":"password123"}')
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "不正メール形式 - ステータスコード400" "400" "$status" "$body"
 assert_json_value "不正メール形式 - エラーコード" "$body" "errorCode" "VALIDATION_ERROR"
 
-echo ""
-echo "--------------------------------------------"
-echo "テスト6: フィールド欠落でバリデーションエラー"
-echo "--------------------------------------------"
+log ""
+log "--------------------------------------------"
+log "テスト6: フィールド欠落でバリデーションエラー"
+log "--------------------------------------------"
 result=$(do_post "${BASE_URL}/api/login" '{}')
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "フィールド欠落 - ステータスコード400" "400" "$status" "$body"
 assert_json_value "フィールド欠落 - エラーコード" "$body" "errorCode" "VALIDATION_ERROR"
 
-echo ""
-echo "--------------------------------------------"
-echo "テスト7: Redisセッション検証（正常ログイン後）"
-echo "--------------------------------------------"
+log ""
+log "--------------------------------------------"
+log "テスト7: Redisセッション検証（正常ログイン後）"
+log "--------------------------------------------"
 # 再度ログインしてセッションIDを取得
 result=$(do_post "${BASE_URL}/api/login" '{"email":"test@example.com","password":"password123"}')
 status=$(echo "$result" | cut -d'|' -f1)
@@ -205,25 +219,25 @@ if [ -n "$SESSION_ID" ] && [ "$SESSION_ID" != "null" ]; then
         REDIS_VALUE=$(docker compose exec -T redis redis-cli GET "session:${SESSION_ID}" 2>/dev/null || echo "")
         if [ -n "$REDIS_VALUE" ] && [ "$REDIS_VALUE" != "" ]; then
             PASS=$((PASS + 1))
-            echo "  ✓ PASS: Redisセッション存在確認 (session:${SESSION_ID}=${REDIS_VALUE})"
+            log "  ✓ PASS: Redisセッション存在確認 (session:${SESSION_ID}=${REDIS_VALUE})"
         else
             # CI環境等でRedisに直接アクセスできない場合はスキップ
             PASS=$((PASS + 1))
-            echo "  ✓ PASS: セッションID取得確認 (sessionId=${SESSION_ID}) ※Redis直接確認はスキップ"
+            log "  ✓ PASS: セッションID取得確認 (sessionId=${SESSION_ID}) ※Redis直接確認はスキップ"
         fi
     else
         PASS=$((PASS + 1))
-        echo "  ✓ PASS: セッションID取得確認 (sessionId=${SESSION_ID}) ※docker未検出のためRedis確認スキップ"
+        log "  ✓ PASS: セッションID取得確認 (sessionId=${SESSION_ID}) ※docker未検出のためRedis確認スキップ"
     fi
 else
     FAIL=$((FAIL + 1))
-    echo "  ✗ FAIL: セッションIDが取得できませんでした"
+    log "  ✗ FAIL: セッションIDが取得できませんでした"
 fi
 
-echo ""
-echo "--------------------------------------------"
-echo "テスト8: 連続ログインで異なるセッションIDが発行されること"
-echo "--------------------------------------------"
+log ""
+log "--------------------------------------------"
+log "テスト8: 連続ログインで異なるセッションIDが発行されること"
+log "--------------------------------------------"
 result1=$(do_post "${BASE_URL}/api/login" '{"email":"test@example.com","password":"password123"}')
 body1=$(echo "$result1" | cut -d'|' -f2-)
 session1=$(echo "$body1" | jq -r ".sessionId" 2>/dev/null)
@@ -235,29 +249,32 @@ session2=$(echo "$body2" | jq -r ".sessionId" 2>/dev/null)
 TOTAL=$((TOTAL + 1))
 if [ "$session1" != "$session2" ] && [ -n "$session1" ] && [ -n "$session2" ]; then
     PASS=$((PASS + 1))
-    echo "  ✓ PASS: 連続ログインで異なるセッションID (${session1} != ${session2})"
+    log "  ✓ PASS: 連続ログインで異なるセッションID (${session1} != ${session2})"
 else
     FAIL=$((FAIL + 1))
-    echo "  ✗ FAIL: セッションIDが同一または空 (session1=${session1}, session2=${session2})"
+    log "  ✗ FAIL: セッションIDが同一または空 (session1=${session1}, session2=${session2})"
 fi
 
 # ============================================================================
 # テスト結果サマリ
 # ============================================================================
 
-echo ""
-echo "============================================"
-echo "E2Eテスト結果サマリ"
-echo "============================================"
-echo "合計: ${TOTAL}"
-echo "成功: ${PASS}"
-echo "失敗: ${FAIL}"
-echo "============================================"
+log ""
+log "============================================"
+log "E2Eテスト結果サマリ"
+log "============================================"
+log "合計: ${TOTAL}"
+log "成功: ${PASS}"
+log "失敗: ${FAIL}"
+log "============================================"
+
+log ""
+log "レポートファイル: ${REPORT_FILE}"
 
 if [ "$FAIL" -gt 0 ]; then
-    echo "E2Eテスト失敗"
+    log "E2Eテスト失敗"
     exit 1
 else
-    echo "E2Eテスト全件成功"
+    log "E2Eテスト全件成功"
     exit 0
 fi
