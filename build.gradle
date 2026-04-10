@@ -17,6 +17,9 @@ dependencies {
     implementation 'io.quarkus:quarkus-redis-client'
     implementation 'io.quarkus:quarkus-jdbc-postgresql'
     implementation 'io.quarkus:quarkus-arc'
+    implementation 'io.quarkus:quarkus-config-yaml'
+    implementation 'io.quarkus:quarkus-logging-json'
+    implementation 'io.quarkus:quarkus-smallrye-health'
     implementation 'at.favre.lib:bcrypt:0.10.2'
     implementation 'com.fasterxml.uuid:java-uuid-generator:5.0.0'
 

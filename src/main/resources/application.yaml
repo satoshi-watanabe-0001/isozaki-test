@@ -1,0 +1,48 @@
+# アプリケーション設定
+quarkus:
+  application:
+    name: user-auth-app
+
+  # PostgreSQL データソース設定
+  datasource:
+    db-kind: postgresql
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    jdbc:
+      url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:userauth}
+
+  # Hibernate ORM設定
+  hibernate-orm:
+    database:
+      generation: none
+      charset: UTF-8
+    log:
+      sql: false
+    jdbc:
+      statement-batch-size: 50
+
+  # Redis設定
+  redis:
+    hosts: redis://${REDIS_HOST:localhost}:${REDIS_PORT:6379}
+
+  # HTTPサーバ設定
+  http:
+    port: 8080
+    cors:
+      enabled: true
+    access-log:
+      enabled: true
+      pattern: "%h %l %u %t \"%r\" %s %b \"%{i,Referer}\" \"%{i,User-Agent}\" %D"
+
+  # ロギング設定
+  log:
+    level: INFO
+    category:
+      "com.isozaki":
+        level: DEBUG
+    console:
+      json: true
+
+  # ヘルスチェック設定
+  smallrye-health:
+    root-path: /q/health
