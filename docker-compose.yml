@@ -14,7 +14,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
     healthcheck:
-      test: ["CMD-SHELL", "curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/login -X POST -H 'Content-Type: application/json' -d '{}' | grep -qE '^[2-5][0-9]{2}$'"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/q/health/ready || exit 1"]
       interval: 5s
       timeout: 10s
       retries: 30
