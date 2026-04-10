@@ -1,0 +1,48 @@
+# ============================================================================
+# GitHub Actions: E2Eテストワークフロー
+# Description: プルリクエスト時にDocker環境でE2Eテストを実行
+# Trigger: プルリクエスト（mainブランチ向け）
+# ============================================================================
+
+name: E2E Test
+
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-test:
+    name: E2Eテスト（Docker環境）
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: リポジトリのチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Docker Composeでサービスを起動
+        run: docker compose up -d --build --wait
+        timeout-minutes: 10
+
+      - name: サービスの起動状態を確認
+        run: docker compose ps
+
+      - name: E2Eテスト実行
+        run: |
+          chmod +x ./e2e/e2e-test.sh
+          ./e2e/e2e-test.sh
+        timeout-minutes: 5
+
+      - name: アプリケーションログの出力（失敗時）
+        if: failure()
+        run: docker compose logs app
+
+      - name: 全サービスログの出力（失敗時）
+        if: failure()
+        run: docker compose logs
+
+      - name: Docker Composeの停止
+        if: always()
+        run: docker compose down -v

@@ -29,3 +29,14 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- メールアドレス検索用インデックス
 CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
+
+-- テスト用ユーザデータ（パスワード: password123）
+INSERT INTO users (user_id, username, email, password_hash, created_at, updated_at)
+VALUES (
+    CAST('01908b7e-1234-7000-8000-000000000001' AS uuid),
+    'テストユーザ',
+    'test@example.com',
+    '$2a$12$7VmZoxX4W.QSvQelvMWgHOYRzd0BJzdUiuUOCrlkaedQC1.yte/y2',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+) ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash;

@@ -1,0 +1,55 @@
+# ============================================================================
+# GitHub Actions: 単体テストワークフロー
+# Description: プルリクエスト時にGradleで単体テストとJaCoCoカバレッジ検証を実行
+# Trigger: プルリクエスト（mainブランチ向け）
+# ============================================================================
+
+name: Unit Test
+
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  unit-test:
+    name: 単体テスト・カバレッジ検証
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: リポジトリのチェックアウト
+        uses: actions/checkout@v4
+
+      - name: JDK 17のセットアップ
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Gradleキャッシュの設定
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Gradleラッパーに実行権限を付与
+        run: chmod +x ./gradlew
+
+      - name: 単体テスト実行
+        run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification
+
+      - name: テストレポートのアップロード
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-report
+          path: |
+            build/reports/tests/test/
+            build/reports/jacoco/test/html/
+          retention-days: 7
