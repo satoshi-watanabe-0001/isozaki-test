@@ -87,13 +87,13 @@ assert_json_value() {
 wait_for_app() {
     local max_retries=60
     local retry=0
-    log "アプリケーションの起動を待機中..."
+    log "アプリケーションの起動を待機中... (ヘルスチェック: ${BASE_URL}/q/health/ready)"
     while [ $retry -lt $max_retries ]; do
         local status
-        status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "${BASE_URL}/api/login" -X POST -H "Content-Type: application/json" -d '{}' 2>/dev/null) || true
-        # 有効なHTTPレスポンス（1xx〜5xx）があれば起動済み
-        if [ -n "$status" ] && [ "$status" != "000" ] && [ "$status" -ge 100 ] 2>/dev/null; then
-            log "アプリケーションが起動しました (HTTP ${status})"
+        status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "${BASE_URL}/q/health/ready" 2>/dev/null) || true
+        # ヘルスチェックが200を返せばアプリケーション起動済み
+        if [ "$status" = "200" ]; then
+            log "アプリケーションが起動しました (ヘルスチェック: HTTP ${status})"
             return 0
         fi
         retry=$((retry + 1))
