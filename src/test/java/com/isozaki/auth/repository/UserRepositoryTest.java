@@ -10,7 +10,6 @@ package com.isozaki.auth.repository;
 
 import com.isozaki.auth.entity.UserEntity;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
