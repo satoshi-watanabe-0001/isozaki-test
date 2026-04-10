@@ -39,3 +39,6 @@ nb-configuration.xml
 /.quarkus/cli/plugins/
 # TLS Certificates
 .certs/
+
+# E2Eテストレポート
+e2e/reports/
