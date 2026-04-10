@@ -40,5 +40,9 @@ nb-configuration.xml
 # TLS Certificates
 .certs/
 
+# Node.js
+node_modules/
+.next/
+
 # E2Eテストレポート
 e2e/reports/

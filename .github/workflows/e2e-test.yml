@@ -37,7 +37,7 @@ jobs:
 
       - name: アプリケーションログの出力（失敗時）
         if: failure()
-        run: docker compose logs app
+        run: docker compose logs backend
 
       - name: 全サービスログの出力（失敗時）
         if: failure()
