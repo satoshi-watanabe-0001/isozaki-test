@@ -1,7 +1,7 @@
 /**
  * LoginResponseの単体テスト
  *
- * <p>LoginResponse DTOのgetter/setter/コンストラクタをテストする。</p>
+ * <p>LoginResponse recordのコンストラクタとアクセサをテストする。</p>
  *
  * @since 1.0
  */
@@ -11,7 +11,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * LoginResponseのテストクラス
@@ -20,43 +19,25 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class LoginResponseTest {
 
     @Test
-    @DisplayName("デフォルトコンストラクタでnullが設定されること")
-    void shouldCreateWithDefaultConstructor() {
-        // When
-        LoginResponse response = new LoginResponse();
-
-        // Then
-        assertNull(response.getSessionId());
-        assertNull(response.getUserId());
-        assertNull(response.getUsername());
-    }
-
-    @Test
-    @DisplayName("全引数コンストラクタで値が正しく設定されること")
-    void shouldCreateWithAllArgsConstructor() {
+    @DisplayName("コンストラクタで値が正しく設定されること")
+    void shouldCreateWithConstructor() {
         // When
         LoginResponse response = new LoginResponse("session-123", "user-456", "テストユーザ");
 
         // Then
-        assertEquals("session-123", response.getSessionId());
-        assertEquals("user-456", response.getUserId());
-        assertEquals("テストユーザ", response.getUsername());
+        assertEquals("session-123", response.sessionId());
+        assertEquals("user-456", response.userId());
+        assertEquals("テストユーザ", response.username());
     }
 
     @Test
-    @DisplayName("setterで値が正しく設定されること")
-    void shouldSetValuesCorrectly() {
+    @DisplayName("同じ値を持つインスタンスが等価であること")
+    void shouldBeEqualForSameValues() {
         // Given
-        LoginResponse response = new LoginResponse();
-
-        // When
-        response.setSessionId("session-123");
-        response.setUserId("user-456");
-        response.setUsername("テストユーザ");
+        LoginResponse response1 = new LoginResponse("session-123", "user-456", "テストユーザ");
+        LoginResponse response2 = new LoginResponse("session-123", "user-456", "テストユーザ");
 
         // Then
-        assertEquals("session-123", response.getSessionId());
-        assertEquals("user-456", response.getUserId());
-        assertEquals("テストユーザ", response.getUsername());
+        assertEquals(response1, response2);
     }
 }

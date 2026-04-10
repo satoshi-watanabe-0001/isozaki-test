@@ -12,70 +12,12 @@ package com.isozaki.auth.dto;
  *
  * <p>エラーコードとメッセージを含む。</p>
  *
+ * @param errorCode エラーコード
+ * @param message   エラーメッセージ
  * @since 1.0
  */
-public class ErrorResponse {
-
-    /**
-     * エラーコード
-     */
-    private String errorCode;
-
-    /**
-     * エラーメッセージ
-     */
-    private String message;
-
-    /**
-     * デフォルトコンストラクタ
-     */
-    public ErrorResponse() {
-    }
-
-    /**
-     * 全フィールドを指定するコンストラクタ
-     *
-     * @param errorCode エラーコード
-     * @param message   エラーメッセージ
-     */
-    public ErrorResponse(String errorCode, String message) {
-        this.errorCode = errorCode;
-        this.message = message;
-    }
-
-    /**
-     * エラーコードを取得する
-     *
-     * @return エラーコード
-     */
-    public String getErrorCode() {
-        return errorCode;
-    }
-
-    /**
-     * エラーコードを設定する
-     *
-     * @param errorCode エラーコード
-     */
-    public void setErrorCode(String errorCode) {
-        this.errorCode = errorCode;
-    }
-
-    /**
-     * エラーメッセージを取得する
-     *
-     * @return エラーメッセージ
-     */
-    public String getMessage() {
-        return message;
-    }
-
-    /**
-     * エラーメッセージを設定する
-     *
-     * @param message エラーメッセージ
-     */
-    public void setMessage(String message) {
-        this.message = message;
-    }
+public record ErrorResponse(
+        String errorCode,
+        String message
+) {
 }

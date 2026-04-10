@@ -55,8 +55,8 @@ class GlobalExceptionHandlerTest {
             assertEquals(Response.Status.UNAUTHORIZED.getStatusCode(), response.getStatus());
             ErrorResponse errorResponse = (ErrorResponse) response.getEntity();
             assertNotNull(errorResponse);
-            assertEquals("AUTHENTICATION_FAILED", errorResponse.getErrorCode());
-            assertEquals("認証失敗", errorResponse.getMessage());
+            assertEquals("AUTHENTICATION_FAILED", errorResponse.errorCode());
+            assertEquals("認証失敗", errorResponse.message());
         }
     }
 
@@ -81,7 +81,7 @@ class GlobalExceptionHandlerTest {
             assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
             ErrorResponse errorResponse = (ErrorResponse) response.getEntity();
             assertNotNull(errorResponse);
-            assertEquals("VALIDATION_ERROR", errorResponse.getErrorCode());
+            assertEquals("VALIDATION_ERROR", errorResponse.errorCode());
         }
 
         @Test
@@ -105,7 +105,7 @@ class GlobalExceptionHandlerTest {
             ErrorResponse errorResponse = (ErrorResponse) response.getEntity();
             assertNotNull(errorResponse);
             // メッセージに両方のエラーが含まれていることを確認
-            String message = errorResponse.getMessage();
+            String message = errorResponse.message();
             assertNotNull(message);
             assertTrue(message.contains("メールアドレスは必須です"),
                     "メッセージに'メールアドレスは必須です'が含まれていること");
@@ -129,7 +129,7 @@ class GlobalExceptionHandlerTest {
             assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
             ErrorResponse errorResponse = (ErrorResponse) response.getEntity();
             assertNotNull(errorResponse);
-            assertEquals("バリデーションエラー", errorResponse.getMessage());
+            assertEquals("バリデーションエラー", errorResponse.message());
         }
     }
 }

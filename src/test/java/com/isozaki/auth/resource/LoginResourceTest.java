@@ -56,9 +56,9 @@ class LoginResourceTest {
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         LoginResponse actualResponse = (LoginResponse) response.getEntity();
         assertNotNull(actualResponse);
-        assertEquals("session-123", actualResponse.getSessionId());
-        assertEquals("user-456", actualResponse.getUserId());
-        assertEquals("テストユーザ", actualResponse.getUsername());
+        assertEquals("session-123", actualResponse.sessionId());
+        assertEquals("user-456", actualResponse.userId());
+        assertEquals("テストユーザ", actualResponse.username());
         verify(authService).login(request);
     }
 }

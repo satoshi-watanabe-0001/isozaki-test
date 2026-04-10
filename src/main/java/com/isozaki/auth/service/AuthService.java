@@ -60,7 +60,7 @@ public class AuthService {
      * @throws AuthenticationException メールアドレスが未登録またはパスワードが不一致の場合
      */
     public LoginResponse login(LoginRequest request) {
-        Optional<UserEntity> userOptional = userRepository.findByEmail(request.getEmail());
+        Optional<UserEntity> userOptional = userRepository.findByEmail(request.email());
 
         if (userOptional.isEmpty()) {
             throw new AuthenticationException("メールアドレスまたはパスワードが正しくありません");
@@ -68,7 +68,7 @@ public class AuthService {
 
         UserEntity user = userOptional.get();
 
-        if (!passwordService.verifyPassword(request.getPassword(), user.passwordHash)) {
+        if (!passwordService.verifyPassword(request.password(), user.passwordHash)) {
             throw new AuthenticationException("メールアドレスまたはパスワードが正しくありません");
         }
 
