@@ -39,10 +39,10 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Gradleラッパーに実行権限を付与
-        run: chmod +x ./gradlew
+        run: chmod +x ./backend/gradlew
 
       - name: 単体テスト実行
-        run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification
+        run: ./backend/gradlew -p backend test jacocoTestReport jacocoTestCoverageVerification
 
       - name: テストレポートのアップロード
         if: always()
@@ -50,6 +50,6 @@ jobs:
         with:
           name: unit-test-report
           path: |
-            build/reports/tests/test/
-            build/reports/jacoco/test/html/
+            backend/build/reports/tests/test/
+            backend/build/reports/jacoco/test/html/
           retention-days: 7

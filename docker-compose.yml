@@ -1,7 +1,7 @@
 services:
-  app:
+  backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
@@ -23,6 +23,18 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      BACKEND_INTERNAL_URL: http://backend:8080
+    depends_on:
+      backend:
         condition: service_healthy
 
   postgres:
