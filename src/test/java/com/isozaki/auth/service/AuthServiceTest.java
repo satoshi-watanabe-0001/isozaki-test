@@ -93,9 +93,9 @@ class AuthServiceTest {
 
             // Then
             assertNotNull(response);
-            assertEquals(expectedSessionId, response.getSessionId());
-            assertEquals(user.userId.toString(), response.getUserId());
-            assertEquals(user.username, response.getUsername());
+            assertEquals(expectedSessionId, response.sessionId());
+            assertEquals(user.userId.toString(), response.userId());
+            assertEquals(user.username, response.username());
 
             verify(userRepository).findByEmail("test@example.com");
             verify(passwordService).verifyPassword("password123", user.passwordHash);

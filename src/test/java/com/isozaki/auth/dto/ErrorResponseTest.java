@@ -1,7 +1,7 @@
 /**
  * ErrorResponseの単体テスト
  *
- * <p>ErrorResponse DTOのgetter/setter/コンストラクタをテストする。</p>
+ * <p>ErrorResponse recordのコンストラクタとアクセサをテストする。</p>
  *
  * @since 1.0
  */
@@ -11,7 +11,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * ErrorResponseのテストクラス
@@ -20,39 +19,24 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class ErrorResponseTest {
 
     @Test
-    @DisplayName("デフォルトコンストラクタでnullが設定されること")
-    void shouldCreateWithDefaultConstructor() {
-        // When
-        ErrorResponse response = new ErrorResponse();
-
-        // Then
-        assertNull(response.getErrorCode());
-        assertNull(response.getMessage());
-    }
-
-    @Test
-    @DisplayName("全引数コンストラクタで値が正しく設定されること")
-    void shouldCreateWithAllArgsConstructor() {
+    @DisplayName("コンストラクタで値が正しく設定されること")
+    void shouldCreateWithConstructor() {
         // When
         ErrorResponse response = new ErrorResponse("AUTH_FAILED", "認証に失敗しました");
 
         // Then
-        assertEquals("AUTH_FAILED", response.getErrorCode());
-        assertEquals("認証に失敗しました", response.getMessage());
+        assertEquals("AUTH_FAILED", response.errorCode());
+        assertEquals("認証に失敗しました", response.message());
     }
 
     @Test
-    @DisplayName("setterで値が正しく設定されること")
-    void shouldSetValuesCorrectly() {
+    @DisplayName("同じ値を持つインスタンスが等価であること")
+    void shouldBeEqualForSameValues() {
         // Given
-        ErrorResponse response = new ErrorResponse();
-
-        // When
-        response.setErrorCode("VALIDATION_ERROR");
-        response.setMessage("バリデーションエラー");
+        ErrorResponse response1 = new ErrorResponse("VALIDATION_ERROR", "バリデーションエラー");
+        ErrorResponse response2 = new ErrorResponse("VALIDATION_ERROR", "バリデーションエラー");
 
         // Then
-        assertEquals("VALIDATION_ERROR", response.getErrorCode());
-        assertEquals("バリデーションエラー", response.getMessage());
+        assertEquals(response1, response2);
     }
 }

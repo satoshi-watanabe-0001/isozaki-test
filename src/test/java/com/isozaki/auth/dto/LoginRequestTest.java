@@ -1,7 +1,7 @@
 /**
  * LoginRequestの単体テスト
  *
- * <p>LoginRequest DTOのgetter/setter/コンストラクタをテストする。</p>
+ * <p>LoginRequest recordのコンストラクタとアクセサをテストする。</p>
  *
  * @since 1.0
  */
@@ -11,7 +11,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * LoginRequestのテストクラス
@@ -20,39 +19,24 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class LoginRequestTest {
 
     @Test
-    @DisplayName("デフォルトコンストラクタでnullが設定されること")
-    void shouldCreateWithDefaultConstructor() {
-        // When
-        LoginRequest request = new LoginRequest();
-
-        // Then
-        assertNull(request.getEmail());
-        assertNull(request.getPassword());
-    }
-
-    @Test
-    @DisplayName("全引数コンストラクタで値が正しく設定されること")
-    void shouldCreateWithAllArgsConstructor() {
+    @DisplayName("コンストラクタで値が正しく設定されること")
+    void shouldCreateWithConstructor() {
         // When
         LoginRequest request = new LoginRequest("test@example.com", "password123");
 
         // Then
-        assertEquals("test@example.com", request.getEmail());
-        assertEquals("password123", request.getPassword());
+        assertEquals("test@example.com", request.email());
+        assertEquals("password123", request.password());
     }
 
     @Test
-    @DisplayName("setterで値が正しく設定されること")
-    void shouldSetValuesCorrectly() {
+    @DisplayName("同じ値を持つインスタンスが等価であること")
+    void shouldBeEqualForSameValues() {
         // Given
-        LoginRequest request = new LoginRequest();
-
-        // When
-        request.setEmail("test@example.com");
-        request.setPassword("password123");
+        LoginRequest request1 = new LoginRequest("test@example.com", "password123");
+        LoginRequest request2 = new LoginRequest("test@example.com", "password123");
 
         // Then
-        assertEquals("test@example.com", request.getEmail());
-        assertEquals("password123", request.getPassword());
+        assertEquals(request1, request2);
     }
 }
