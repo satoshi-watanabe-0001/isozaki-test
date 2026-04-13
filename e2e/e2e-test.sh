@@ -159,7 +159,7 @@ result=$(do_post "${BASE_URL}/api/v1/login" '{"email":"test@example.com","passwo
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "パスワード誤り - ステータスコード401" "401" "$status" "$body"
-assert_json_value "パスワード誤り - エラーコード" "$body" "errorCode" "AUTHENTICATION_FAILED"
+assert_json_value "パスワード誤り - エラーコード" "$body" "error.code" "AUTHENTICATION_FAILED"
 
 log ""
 log "--------------------------------------------"
