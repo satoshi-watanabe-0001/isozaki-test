@@ -73,8 +73,8 @@ jobs:
         run: npm ci
         working-directory: frontend
 
-      - name: フロントエンドテスト実行
-        run: npm test
+      - name: フロントエンドテスト実行（カバレッジ付き）
+        run: npx vitest run --coverage
         working-directory: frontend
 
       - name: テストレポートのアップロード
@@ -82,5 +82,15 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: frontend-test-report
-          path: frontend/test-results/
+          path: |
+            frontend/test-results/junit-report.xml
+            frontend/test-results/html/
+          retention-days: 7
+
+      - name: カバレッジレポートのアップロード
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: frontend-coverage-report
+          path: frontend/test-results/coverage/
           retention-days: 7
