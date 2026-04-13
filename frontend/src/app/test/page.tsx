@@ -26,7 +26,8 @@ interface HealthState {
   fetchedAt: string | null;
 }
 
-const HEALTH_ENDPOINT = "/api/backend/q/health";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+const HEALTH_ENDPOINT = `${BACKEND_URL}/q/health`;
 
 /**
  * テストページ
