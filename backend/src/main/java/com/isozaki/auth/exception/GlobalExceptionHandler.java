@@ -5,11 +5,13 @@
  *
  * @since 1.0
  */
+
 package com.isozaki.auth.exception;
 
 import com.isozaki.auth.dto.ErrorResponse;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.ws.rs.core.Response;
+import java.util.List;
 import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
 
 /**
@@ -27,7 +29,7 @@ public class GlobalExceptionHandler {
      */
     @ServerExceptionMapper
     public Response handleAuthenticationException(AuthenticationException exception) {
-        ErrorResponse error = new ErrorResponse("AUTHENTICATION_FAILED", exception.getMessage());
+        ErrorResponse error = ErrorResponse.of("AUTHENTICATION_FAILED", exception.getMessage());
         return Response.status(Response.Status.UNAUTHORIZED).entity(error).build();
     }
 
@@ -39,11 +41,15 @@ public class GlobalExceptionHandler {
      */
     @ServerExceptionMapper
     public Response handleConstraintViolation(ConstraintViolationException exception) {
-        String message = exception.getConstraintViolations().stream()
+        List<String> details = exception.getConstraintViolations().stream()
                 .map(violation -> violation.getMessage())
-                .reduce((a, b) -> a + "; " + b)
-                .orElse("バリデーションエラー");
-        ErrorResponse error = new ErrorResponse("VALIDATION_ERROR", message);
+                .toList();
+
+        String message = details.isEmpty()
+                ? "バリデーションエラー"
+                : String.join("; ", details);
+
+        ErrorResponse error = ErrorResponse.of("VALIDATION_ERROR", message, details);
         return Response.status(Response.Status.BAD_REQUEST).entity(error).build();
     }
 }

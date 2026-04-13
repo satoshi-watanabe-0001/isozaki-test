@@ -46,6 +46,12 @@ class RedisHealthCheckTest {
     @DisplayName("call 正常系テスト")
     class CallSuccessTests {
 
+        /**
+         * 【テスト対象】RedisHealthCheck#call
+         * 【テストケース】Redis接続が正常な場合
+         * 【期待結果】ステータスUPが返却される
+         * 【ビジネス要件】Redis接続の正常性確認
+         */
         @Test
         @DisplayName("Redis接続が正常な場合、UPが返されること")
         void shouldReturnUpWhenRedisIsAvailable() {
@@ -66,6 +72,12 @@ class RedisHealthCheckTest {
     @DisplayName("call 異常系テスト")
     class CallFailureTests {
 
+        /**
+         * 【テスト対象】RedisHealthCheck#call
+         * 【テストケース】Redis接続で例外が発生する
+         * 【期待結果】ステータスDOWNが返却される
+         * 【ビジネス要件】Redis障害時の異常検知
+         */
         @Test
         @DisplayName("Redis接続で例外が発生した場合、DOWNが返されること")
         void shouldReturnDownWhenExceptionOccurs() {

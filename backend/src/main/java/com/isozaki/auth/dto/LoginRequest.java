@@ -5,6 +5,7 @@
  *
  * @since 1.0
  */
+
 package com.isozaki.auth.dto;
 
 import jakarta.validation.constraints.Email;

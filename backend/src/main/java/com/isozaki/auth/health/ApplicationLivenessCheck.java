@@ -5,6 +5,7 @@
  *
  * @since 1.0
  */
+
 package com.isozaki.auth.health;
 
 import jakarta.enterprise.context.ApplicationScoped;

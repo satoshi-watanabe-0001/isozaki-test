@@ -6,6 +6,7 @@
  *
  * @since 1.0
  */
+
 package com.isozaki.auth.repository;
 
 import com.isozaki.auth.entity.UserEntity;

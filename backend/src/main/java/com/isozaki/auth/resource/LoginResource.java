@@ -6,6 +6,7 @@
  *
  * @since 1.0
  */
+
 package com.isozaki.auth.resource;
 
 import com.isozaki.auth.dto.LoginRequest;
@@ -23,12 +24,12 @@ import jakarta.ws.rs.core.Response;
 /**
  * ログインAPIのエンドポイントを提供するリソース
  *
- * <p>POST /api/login でJSON形式のメールアドレスとパスワードを受け取り、
+ * <p>POST /api/v1/login でJSON形式のメールアドレスとパスワードを受け取り、
  * DBのユーザデータと突合してログイン処理を行う。</p>
  *
  * @since 1.0
  */
-@Path("/api")
+@Path("/api/v1")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class LoginResource {

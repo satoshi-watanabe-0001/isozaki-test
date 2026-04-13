@@ -72,6 +72,12 @@ class UserRepositoryTest {
         return user;
     }
 
+    /**
+     * 【テスト対象】UserRepository#findByEmail
+     * 【テストケース】存在するメールアドレスで検索する
+     * 【期待結果】対応するユーザエンティティが返却される
+     * 【ビジネス要件】ログイン時のユーザ検索
+     */
     @Test
     @DisplayName("findByEmail: 存在するメールアドレスでユーザが取得できること")
     @Transactional
@@ -89,6 +95,12 @@ class UserRepositoryTest {
         assertEquals("テストユーザ", result.get().username);
     }
 
+    /**
+     * 【テスト対象】UserRepository#findByEmail
+     * 【テストケース】存在しないメールアドレスで検索する
+     * 【期待結果】空のOptionalが返却される
+     * 【ビジネス要件】未登録ユーザの検索失敗ハンドリング
+     */
     @Test
     @DisplayName("findByEmail: 存在しないメールアドレスで空のOptionalが返されること")
     @Transactional
@@ -103,6 +115,12 @@ class UserRepositoryTest {
         assertFalse(result.isPresent());
     }
 
+    /**
+     * 【テスト対象】UserRepository#existsByEmail
+     * 【テストケース】登録済みメールアドレスで存在確認する
+     * 【期待結果】trueが返却される
+     * 【ビジネス要件】メールアドレス重複チェック
+     */
     @Test
     @DisplayName("existsByEmail: 登録済みメールアドレスでtrueが返されること")
     @Transactional
@@ -117,6 +135,12 @@ class UserRepositoryTest {
         assertTrue(result);
     }
 
+    /**
+     * 【テスト対象】UserRepository#existsByEmail
+     * 【テストケース】未登録メールアドレスで存在確認する
+     * 【期待結果】falseが返却される
+     * 【ビジネス要件】未登録メールアドレスの判定
+     */
     @Test
     @DisplayName("existsByEmail: 未登録メールアドレスでfalseが返されること")
     @Transactional
@@ -131,6 +155,12 @@ class UserRepositoryTest {
         assertFalse(result);
     }
 
+    /**
+     * 【テスト対象】UserRepository#existsByEmail
+     * 【テストケース】データが存在しない状態で存在確認する
+     * 【期待結果】falseが返却される
+     * 【ビジネス要件】空テーブルでの存在確認
+     */
     @Test
     @DisplayName("existsByEmail: データが存在しない場合にfalseが返されること")
     @Transactional

@@ -76,6 +76,12 @@ class AuthServiceTest {
     @DisplayName("login 正常系テスト")
     class LoginSuccessTests {
 
+        /**
+         * 【テスト対象】AuthService#login
+         * 【テストケース】正しいメールアドレスとパスワードでログインする
+         * 【期待結果】セッションID・ユーザID・ユーザ名を含むLoginResponseが返却される
+         * 【ビジネス要件】ユーザ認証機能 - 正常ログイン
+         */
         @Test
         @DisplayName("正しい認証情報でログインが成功すること")
         void shouldLoginSuccessfully() {
@@ -107,6 +113,12 @@ class AuthServiceTest {
     @DisplayName("login 異常系テスト")
     class LoginFailureTests {
 
+        /**
+         * 【テスト対象】AuthService#login
+         * 【テストケース】未登録のメールアドレスでログインを試みる
+         * 【期待結果】AuthenticationExceptionがスローされる
+         * 【ビジネス要件】ユーザ認証機能 - 不正なメールアドレスの拒否
+         */
         @Test
         @DisplayName("未登録のメールアドレスでAuthenticationExceptionがスローされること")
         void shouldThrowExceptionWhenEmailNotFound() {
@@ -126,6 +138,12 @@ class AuthServiceTest {
             verify(sessionService, never()).createSession(anyString());
         }
 
+        /**
+         * 【テスト対象】AuthService#login
+         * 【テストケース】誤ったパスワードでログインを試みる
+         * 【期待結果】AuthenticationExceptionがスローされる
+         * 【ビジネス要件】ユーザ認証機能 - 不正なパスワードの拒否
+         */
         @Test
         @DisplayName("パスワード不一致でAuthenticationExceptionがスローされること")
         void shouldThrowExceptionWhenPasswordDoesNotMatch() {

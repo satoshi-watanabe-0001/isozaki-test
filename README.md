@@ -22,7 +22,7 @@ Quarkus バックエンドと Next.js フロントエンドで構成されたモ
 
 ### Backend
 
-- JSON形式のログインエンドポイント（`POST /api/login`）
+- JSON形式のログインエンドポイント（`POST /api/v1/login`）
 - メールアドレスとパスワードによるユーザ認証
 - bcrypt（コストファクタ12）によるパスワードハッシュ化
 - Redis によるセッション管理（TTL: 30分）
@@ -171,7 +171,7 @@ docker compose down -v
 ### ログイン
 
 ```
-POST /api/login
+POST /api/v1/login
 Content-Type: application/json
 ```
 
