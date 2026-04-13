@@ -77,6 +77,12 @@ jobs:
         run: npx vitest run --coverage
         working-directory: frontend
 
+      - name: テストレポートをHTML形式に変換
+        if: always()
+        run: |
+          npx xunit-viewer --results test-results/junit-report.xml --output test-results/test-report.html --title "フロントエンド単体テストレポート"
+        working-directory: frontend
+
       - name: テストレポートのアップロード
         if: always()
         uses: actions/upload-artifact@v6
@@ -84,13 +90,6 @@ jobs:
           name: frontend-test-report
           path: |
             frontend/test-results/junit-report.xml
-            frontend/test-results/html/
-          retention-days: 7
-
-      - name: カバレッジレポートのアップロード
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: frontend-coverage-report
-          path: frontend/test-results/coverage/
+            frontend/test-results/test-report.html
+            frontend/test-results/coverage/
           retention-days: 7
