@@ -7,6 +7,7 @@
  *
  * @since 1.0
  */
+
 package com.isozaki.auth.service;
 
 import com.isozaki.auth.dto.LoginRequest;

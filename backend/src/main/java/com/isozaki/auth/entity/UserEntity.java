@@ -6,6 +6,7 @@
  *
  * @since 1.0
  */
+
 package com.isozaki.auth.entity;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;

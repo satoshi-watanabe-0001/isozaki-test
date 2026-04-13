@@ -6,6 +6,7 @@
  *
  * @since 1.0
  */
+
 package com.isozaki.auth.service;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;

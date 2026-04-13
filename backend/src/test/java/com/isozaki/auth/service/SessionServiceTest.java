@@ -6,6 +6,7 @@
  *
  * @since 1.0
  */
+
 package com.isozaki.auth.service;
 
 import io.quarkus.redis.datasource.RedisDataSource;
@@ -21,8 +22,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.verify;
@@ -53,6 +52,12 @@ class SessionServiceTest {
     @DisplayName("createSession テスト")
     class CreateSessionTests {
 
+        /**
+         * 【テスト対象】SessionService#createSession
+         * 【テストケース】ユーザIDを指定してセッションを作成する
+         * 【期待結果】セッションIDが返却され、Redisに保存される
+         * 【ビジネス要件】ログイン時のセッション発行
+         */
         @Test
         @DisplayName("セッションが正常に作成されること")
         void shouldCreateSessionSuccessfully() {
@@ -67,6 +72,12 @@ class SessionServiceTest {
             verify(valueCommands).setex(startsWith("session:"), eq(1800L), eq(userId));
         }
 
+        /**
+         * 【テスト対象】SessionService#createSession
+         * 【テストケース】同じユーザIDで複数回セッションを作成する
+         * 【期待結果】異なるセッションIDが毎回生成される
+         * 【ビジネス要件】セッションIDの一意性保証
+         */
         @Test
         @DisplayName("異なるセッションIDが毎回生成されること")
         void shouldGenerateUniqueSessionIds() {
@@ -87,6 +98,12 @@ class SessionServiceTest {
     @DisplayName("getUserIdBySession テスト")
     class GetUserIdBySessionTests {
 
+        /**
+         * 【テスト対象】SessionService#getUserIdBySession
+         * 【テストケース】有効なセッションIDでユーザIDを取得する
+         * 【期待結果】対応するユーザIDが返却される
+         * 【ビジネス要件】セッションによるユーザ識別
+         */
         @Test
         @DisplayName("有効なセッションIDでユーザIDが取得できること")
         void shouldReturnUserIdForValidSession() {
@@ -103,6 +120,12 @@ class SessionServiceTest {
             verify(valueCommands).get("session:" + sessionId);
         }
 
+        /**
+         * 【テスト対象】SessionService#getUserIdBySession
+         * 【テストケース】無効なセッションIDでユーザIDを取得する
+         * 【期待結果】nullが返却される
+         * 【ビジネス要件】期限切れ・不正セッションの拒否
+         */
         @Test
         @DisplayName("無効なセッションIDでnullが返されること")
         void shouldReturnNullForInvalidSession() {
@@ -123,6 +146,12 @@ class SessionServiceTest {
     @DisplayName("invalidateSession テスト")
     class InvalidateSessionTests {
 
+        /**
+         * 【テスト対象】SessionService#invalidateSession
+         * 【テストケース】セッションIDを指定して削除する
+         * 【期待結果】Redisからセッションが削除される
+         * 【ビジネス要件】ログアウト機能
+         */
         @Test
         @DisplayName("セッションが正常に削除されること")
         void shouldInvalidateSessionSuccessfully() {

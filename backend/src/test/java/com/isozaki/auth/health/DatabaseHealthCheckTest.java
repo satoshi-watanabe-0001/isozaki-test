@@ -6,6 +6,7 @@
  *
  * @since 1.0
  */
+
 package com.isozaki.auth.health;
 
 import org.eclipse.microprofile.health.HealthCheckResponse;
@@ -22,7 +23,6 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
 /**
@@ -49,6 +49,12 @@ class DatabaseHealthCheckTest {
     @DisplayName("call 正常系テスト")
     class CallSuccessTests {
 
+        /**
+         * 【テスト対象】DatabaseHealthCheck#call
+         * 【テストケース】データベース接続が有効な場合
+         * 【期待結果】ステータスUPが返却される
+         * 【ビジネス要件】DB接続の正常性確認
+         */
         @Test
         @DisplayName("データベース接続が有効な場合、UPが返されること")
         void shouldReturnUpWhenConnectionIsValid() throws SQLException {
@@ -69,6 +75,12 @@ class DatabaseHealthCheckTest {
     @DisplayName("call 異常系テスト")
     class CallFailureTests {
 
+        /**
+         * 【テスト対象】DatabaseHealthCheck#call
+         * 【テストケース】データベース接続が無効な場合
+         * 【期待結果】ステータスDOWNが返却される
+         * 【ビジネス要件】DB障害時の異常検知
+         */
         @Test
         @DisplayName("データベース接続が無効な場合、DOWNが返されること")
         void shouldReturnDownWhenConnectionIsInvalid() throws SQLException {
@@ -84,6 +96,12 @@ class DatabaseHealthCheckTest {
             assertEquals("データベース接続", response.getName());
         }
 
+        /**
+         * 【テスト対象】DatabaseHealthCheck#call
+         * 【テストケース】データベース接続で例外が発生する
+         * 【期待結果】ステータスDOWNが返却される
+         * 【ビジネス要件】DB接続エラー時の異常検知
+         */
         @Test
         @DisplayName("データベース接続で例外が発生した場合、DOWNが返されること")
         void shouldReturnDownWhenExceptionOccurs() throws SQLException {

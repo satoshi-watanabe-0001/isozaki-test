@@ -6,6 +6,7 @@
  *
  * @since 1.0
  */
+
 package com.isozaki.auth.resource;
 
 import com.isozaki.auth.dto.LoginRequest;
@@ -41,6 +42,12 @@ class LoginResourceTest {
         loginResource = new LoginResource(authService);
     }
 
+    /**
+     * 【テスト対象】LoginResource#login
+     * 【テストケース】正しい認証情報でログインリクエストを送信する
+     * 【期待結果】HTTP 200 OKとLoginResponseが返却される
+     * 【ビジネス要件】ログインAPI - 正常レスポンス
+     */
     @Test
     @DisplayName("ログインが成功した場合、200 OKとレスポンスが返されること")
     void shouldReturnOkWithLoginResponse() {

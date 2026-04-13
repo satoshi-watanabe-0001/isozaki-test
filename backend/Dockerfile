@@ -4,6 +4,7 @@ WORKDIR /app
 COPY gradlew ./
 COPY gradle ./gradle
 COPY build.gradle settings.gradle gradle.properties ./
+COPY config ./config
 COPY src ./src
 RUN chmod +x ./gradlew && ./gradlew build -Dquarkus.package.jar.type=uber-jar -x test --no-daemon
 

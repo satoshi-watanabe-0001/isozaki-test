@@ -140,7 +140,7 @@ log ""
 log "--------------------------------------------"
 log "テスト1: 正常ログイン"
 log "--------------------------------------------"
-result=$(do_post "${BASE_URL}/api/login" '{"email":"test@example.com","password":"password123"}')
+result=$(do_post "${BASE_URL}/api/v1/login" '{"email":"test@example.com","password":"password123"}')
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "正常ログイン - ステータスコード200" "200" "$status" "$body"
@@ -155,58 +155,58 @@ log ""
 log "--------------------------------------------"
 log "テスト2: パスワード誤りでログイン失敗"
 log "--------------------------------------------"
-result=$(do_post "${BASE_URL}/api/login" '{"email":"test@example.com","password":"wrongpassword"}')
+result=$(do_post "${BASE_URL}/api/v1/login" '{"email":"test@example.com","password":"wrongpassword"}')
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "パスワード誤り - ステータスコード401" "401" "$status" "$body"
-assert_json_value "パスワード誤り - エラーコード" "$body" "errorCode" "AUTHENTICATION_FAILED"
+assert_json_value "パスワード誤り - エラーコード" "$body" "error.code" "AUTHENTICATION_FAILED"
 
 log ""
 log "--------------------------------------------"
 log "テスト3: 存在しないユーザでログイン失敗"
 log "--------------------------------------------"
-result=$(do_post "${BASE_URL}/api/login" '{"email":"notexist@example.com","password":"password123"}')
+result=$(do_post "${BASE_URL}/api/v1/login" '{"email":"notexist@example.com","password":"password123"}')
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "存在しないユーザ - ステータスコード401" "401" "$status" "$body"
-assert_json_value "存在しないユーザ - エラーコード" "$body" "errorCode" "AUTHENTICATION_FAILED"
+assert_json_value "存在しないユーザ - エラーコード" "$body" "error.code" "AUTHENTICATION_FAILED"
 
 log ""
 log "--------------------------------------------"
 log "テスト4: 空のリクエストボディでバリデーションエラー"
 log "--------------------------------------------"
-result=$(do_post "${BASE_URL}/api/login" '{"email":"","password":""}')
+result=$(do_post "${BASE_URL}/api/v1/login" '{"email":"","password":""}')
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "空フィールド - ステータスコード400" "400" "$status" "$body"
-assert_json_value "空フィールド - エラーコード" "$body" "errorCode" "VALIDATION_ERROR"
+assert_json_value "空フィールド - エラーコード" "$body" "error.code" "VALIDATION_ERROR"
 
 log ""
 log "--------------------------------------------"
 log "テスト5: 不正なメールアドレス形式でバリデーションエラー"
 log "--------------------------------------------"
-result=$(do_post "${BASE_URL}/api/login" '{"email":"invalid-email","password":"password123"}')
+result=$(do_post "${BASE_URL}/api/v1/login" '{"email":"invalid-email","password":"password123"}')
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "不正メール形式 - ステータスコード400" "400" "$status" "$body"
-assert_json_value "不正メール形式 - エラーコード" "$body" "errorCode" "VALIDATION_ERROR"
+assert_json_value "不正メール形式 - エラーコード" "$body" "error.code" "VALIDATION_ERROR"
 
 log ""
 log "--------------------------------------------"
 log "テスト6: フィールド欠落でバリデーションエラー"
 log "--------------------------------------------"
-result=$(do_post "${BASE_URL}/api/login" '{}')
+result=$(do_post "${BASE_URL}/api/v1/login" '{}')
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "フィールド欠落 - ステータスコード400" "400" "$status" "$body"
-assert_json_value "フィールド欠落 - エラーコード" "$body" "errorCode" "VALIDATION_ERROR"
+assert_json_value "フィールド欠落 - エラーコード" "$body" "error.code" "VALIDATION_ERROR"
 
 log ""
 log "--------------------------------------------"
 log "テスト7: Redisセッション検証（正常ログイン後）"
 log "--------------------------------------------"
 # 再度ログインしてセッションIDを取得
-result=$(do_post "${BASE_URL}/api/login" '{"email":"test@example.com","password":"password123"}')
+result=$(do_post "${BASE_URL}/api/v1/login" '{"email":"test@example.com","password":"password123"}')
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 SESSION_ID=$(echo "$body" | jq -r ".sessionId" 2>/dev/null)
@@ -238,11 +238,11 @@ log ""
 log "--------------------------------------------"
 log "テスト8: 連続ログインで異なるセッションIDが発行されること"
 log "--------------------------------------------"
-result1=$(do_post "${BASE_URL}/api/login" '{"email":"test@example.com","password":"password123"}')
+result1=$(do_post "${BASE_URL}/api/v1/login" '{"email":"test@example.com","password":"password123"}')
 body1=$(echo "$result1" | cut -d'|' -f2-)
 session1=$(echo "$body1" | jq -r ".sessionId" 2>/dev/null)
 
-result2=$(do_post "${BASE_URL}/api/login" '{"email":"test@example.com","password":"password123"}')
+result2=$(do_post "${BASE_URL}/api/v1/login" '{"email":"test@example.com","password":"password123"}')
 body2=$(echo "$result2" | cut -d'|' -f2-)
 session2=$(echo "$body2" | jq -r ".sessionId" 2>/dev/null)
 

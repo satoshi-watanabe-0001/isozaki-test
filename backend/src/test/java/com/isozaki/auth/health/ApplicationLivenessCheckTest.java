@@ -5,6 +5,7 @@
  *
  * @since 1.0
  */
+
 package com.isozaki.auth.health;
 
 import org.eclipse.microprofile.health.HealthCheckResponse;
@@ -27,6 +28,12 @@ class ApplicationLivenessCheckTest {
         healthCheck = new ApplicationLivenessCheck();
     }
 
+    /**
+     * 【テスト対象】ApplicationLivenessCheck#call
+     * 【テストケース】アプリケーション稼働中にヘルスチェックを実行する
+     * 【期待結果】ステータスUPが返却される
+     * 【ビジネス要件】Livenessプローブによる稼働確認
+     */
     @Test
     @DisplayName("アプリケーションが稼働中の場合、UPが返されること")
     void shouldReturnUp() {
