@@ -169,7 +169,7 @@ result=$(do_post "${BASE_URL}/api/v1/login" '{"email":"notexist@example.com","pa
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "存在しないユーザ - ステータスコード401" "401" "$status" "$body"
-assert_json_value "存在しないユーザ - エラーコード" "$body" "errorCode" "AUTHENTICATION_FAILED"
+assert_json_value "存在しないユーザ - エラーコード" "$body" "error.code" "AUTHENTICATION_FAILED"
 
 log ""
 log "--------------------------------------------"
@@ -179,7 +179,7 @@ result=$(do_post "${BASE_URL}/api/v1/login" '{"email":"","password":""}')
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "空フィールド - ステータスコード400" "400" "$status" "$body"
-assert_json_value "空フィールド - エラーコード" "$body" "errorCode" "VALIDATION_ERROR"
+assert_json_value "空フィールド - エラーコード" "$body" "error.code" "VALIDATION_ERROR"
 
 log ""
 log "--------------------------------------------"
@@ -189,7 +189,7 @@ result=$(do_post "${BASE_URL}/api/v1/login" '{"email":"invalid-email","password"
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "不正メール形式 - ステータスコード400" "400" "$status" "$body"
-assert_json_value "不正メール形式 - エラーコード" "$body" "errorCode" "VALIDATION_ERROR"
+assert_json_value "不正メール形式 - エラーコード" "$body" "error.code" "VALIDATION_ERROR"
 
 log ""
 log "--------------------------------------------"
@@ -199,7 +199,7 @@ result=$(do_post "${BASE_URL}/api/v1/login" '{}')
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "フィールド欠落 - ステータスコード400" "400" "$status" "$body"
-assert_json_value "フィールド欠落 - エラーコード" "$body" "errorCode" "VALIDATION_ERROR"
+assert_json_value "フィールド欠落 - エラーコード" "$body" "error.code" "VALIDATION_ERROR"
 
 log ""
 log "--------------------------------------------"
