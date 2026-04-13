@@ -10,6 +10,15 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
+    reporters: ["default", "junit"],
+    outputFile: {
+      junit: "./test-results/junit-report.xml",
+    },
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      reportsDirectory: "./test-results/coverage",
+    },
   },
   resolve: {
     alias: {
