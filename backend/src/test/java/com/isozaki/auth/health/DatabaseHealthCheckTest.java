@@ -6,6 +6,7 @@
  *
  * @since 1.0
  */
+
 package com.isozaki.auth.health;
 
 import org.eclipse.microprofile.health.HealthCheckResponse;
@@ -22,7 +23,6 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
 /**

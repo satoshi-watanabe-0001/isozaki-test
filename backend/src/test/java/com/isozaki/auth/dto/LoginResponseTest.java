@@ -5,6 +5,7 @@
  *
  * @since 1.0
  */
+
 package com.isozaki.auth.dto;
 
 import org.junit.jupiter.api.DisplayName;

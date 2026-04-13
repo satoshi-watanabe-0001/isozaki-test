@@ -117,7 +117,7 @@
         <!-- Suppressions: テストコードとPanacheエンティティ -->
         <module name="SuppressionXpathSingleFilter">
             <property name="files" value=".*Test\.java"/>
-            <property name="checks" value="MissingJavadocMethod|MissingJavadocType|JavadocMethod"/>
+            <property name="checks" value="MissingJavadocMethod|MissingJavadocType|JavadocMethod|MethodName"/>
         </module>
         <module name="SuppressionXpathSingleFilter">
             <property name="files" value=".*Entity\.java"/>

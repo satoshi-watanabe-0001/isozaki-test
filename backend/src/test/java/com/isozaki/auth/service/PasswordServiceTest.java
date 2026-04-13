@@ -5,6 +5,7 @@
  *
  * @since 1.0
  */
+
 package com.isozaki.auth.service;
 
 import org.junit.jupiter.api.BeforeEach;
