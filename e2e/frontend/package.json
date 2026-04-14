@@ -1,0 +1,22 @@
+{
+  "name": "frontend-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Frontend統合テスト（Playwright + MSW）",
+  "scripts": {
+    "test": "npx playwright test",
+    "test:pc": "npx playwright test --project='PC（Desktop Chrome）'",
+    "test:android": "npx playwright test --project='Android（Pixel 7）'",
+    "test:iphone": "npx playwright test --project='iPhone（iPhone 14）'",
+    "report": "npx playwright show-report reports/html"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^25.6.0",
+    "msw": "^2.13.3",
+    "typescript": "^6.0.2"
+  }
+}

@@ -4,7 +4,7 @@
 # Trigger: プルリクエスト（mainブランチ向け）
 # ============================================================================
 
-name: E2E Test
+name: Backend E2E Test
 
 on:
   pull_request:
@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   e2e-test:
-    name: E2Eテスト（Docker環境）
+    name: Backend E2Eテスト（Docker環境）
     runs-on: ubuntu-latest
 
     steps:
@@ -29,10 +29,10 @@ jobs:
       - name: サービスの起動状態を確認
         run: docker compose ps
 
-      - name: E2Eテスト実行
+      - name: Backend E2Eテスト実行
         run: |
-          chmod +x ./e2e/e2e-test.sh
-          ./e2e/e2e-test.sh
+          chmod +x ./e2e/backend/e2e-test.sh
+          ./e2e/backend/e2e-test.sh
         timeout-minutes: 5
 
       - name: アプリケーションログの出力（失敗時）
@@ -47,8 +47,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: e2e-test-report
-          path: e2e/reports/
+          name: backend-e2e-test-report
+          path: e2e/backend/reports/
           retention-days: 7
 
       - name: Docker Composeの停止

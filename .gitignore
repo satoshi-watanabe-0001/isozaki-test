@@ -48,7 +48,9 @@ node_modules/
 frontend/test-results/
 
 # E2Eテストレポート
-e2e/reports/
+e2e/backend/reports/
+e2e/frontend/reports/
+e2e/frontend/test-results/
 
 # Docker volumes
 postgres_data/
