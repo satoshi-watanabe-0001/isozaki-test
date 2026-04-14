@@ -74,7 +74,7 @@ describe("Header", () => {
    * 【期待結果】sessionStorageの情報からユーザーID・ユーザー名が表示される
    * 【ビジネス要件】ログインセッションのブラウザ保持
    */
-  it("sessionStorageにセッションがある場合にログイン済み表示になること", () => {
+  it("sessionStorageにセッションがある場合にログイン済み表示になること", async () => {
     const mockSession = {
       sessionId: "test-session-id",
       userId: "test-user-id",
@@ -89,7 +89,9 @@ describe("Header", () => {
 
     renderWithAuth();
 
-    expect(screen.getByTestId("user-id")).toHaveTextContent("ID: test-user-id");
+    await waitFor(() => {
+      expect(screen.getByTestId("user-id")).toHaveTextContent("ID: test-user-id");
+    });
     expect(screen.getByTestId("user-name")).toHaveTextContent("テストユーザー");
     expect(screen.getByText("ログアウト")).toBeInTheDocument();
     expect(screen.queryByText("ログイン")).not.toBeInTheDocument();
@@ -129,7 +131,7 @@ describe("Header", () => {
    * 【期待結果】ユーザー情報が非表示になり、ログインボタンが再表示される
    * 【ビジネス要件】ログアウト機能（バックエンド連携）
    */
-  it("ログアウトボタン押下時にログインボタンが再表示されること", () => {
+  it("ログアウトボタン押下時にログインボタンが再表示されること", async () => {
     const mockSession = {
       sessionId: "test-session-id",
       userId: "test-user-id",
@@ -143,6 +145,11 @@ describe("Header", () => {
     } as Response);
 
     renderWithAuth();
+
+    // セッション復元を待つ
+    await waitFor(() => {
+      expect(screen.getByText("ログアウト")).toBeInTheDocument();
+    });
 
     fireEvent.click(screen.getByText("ログアウト"));
 

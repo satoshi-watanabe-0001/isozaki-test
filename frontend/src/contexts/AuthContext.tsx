@@ -112,17 +112,22 @@ interface AuthProviderProps {
  * @returns 認証コンテキストを提供するプロバイダー
  */
 export function AuthProvider({ children }: AuthProviderProps): ReactNode {
-  const [user, setUser] = useState<AuthUser | null>(() => loadSession());
+  const [user, setUser] = useState<AuthUser | null>(null);
 
   /**
+   * クライアント側でsessionStorageからセッションを復元し、
    * バックエンド側でセッションの有効性を検証する
+   *
+   * SSR時はsessionStorageにアクセスできないため、
+   * useEffectでクライアントマウント後にセッションを復元する。
+   * これによりサーバー・クライアント間のhydration不整合を防止する。
    *
    * sessionStorageにセッション情報が存在する場合、
    * バックエンドAPIでセッションがRedisに存在するか確認する。
    * 無効な場合はローカルのセッション情報をクリアする。
    */
   useEffect(() => {
-    const validateSession = async (): Promise<void> => {
+    const restoreAndValidateSession = async (): Promise<void> => {
       const storedUser: AuthUser | null = loadSession();
       if (!storedUser) {
         return;
@@ -131,15 +136,18 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
         const response: Response = await fetch(
           `${BACKEND_URL}/api/v1/session/${storedUser.sessionId}`,
         );
-        if (!response.ok) {
+        if (response.ok) {
+          setUser(storedUser);
+        } else {
           setUser(null);
           clearSession();
         }
       } catch {
-        // ネットワークエラー時はローカルのセッションを維持する
+        // ネットワークエラー時はローカルのセッションを復元する
+        setUser(storedUser);
       }
     };
-    void validateSession();
+    void restoreAndValidateSession();
   }, []);
 
   /**
