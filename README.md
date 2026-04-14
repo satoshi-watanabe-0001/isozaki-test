@@ -220,7 +220,7 @@ npm run report
 |---|---|---|---|
 | PC（Desktop Chrome） | デスクトップ | 1280x720 | Chromium |
 | Android（Pixel 7） | Android | 393x851 | Chromium |
-| iPhone（iPhone 14） | iPhone | 390x844 | Chromium |
+| iPhone（iPhone 14） | iPhone | 390x844 | WebKit |
 
 ## APIエンドポイント
 

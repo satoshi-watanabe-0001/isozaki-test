@@ -39,11 +39,7 @@ export default defineConfig({
     },
     {
       name: "iPhone（iPhone 14）",
-      // CI環境でのWebKit依存問題を回避するため、Chromiumでビューポート・UAをエミュレーションする
-      use: {
-        ...devices["iPhone 14"],
-        browserName: "chromium",
-      },
+      use: { ...devices["iPhone 14"] },
     },
   ],
 });

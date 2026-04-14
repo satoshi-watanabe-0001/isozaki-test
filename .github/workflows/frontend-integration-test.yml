@@ -40,7 +40,7 @@ jobs:
         working-directory: e2e/frontend
 
       - name: Playwrightブラウザのインストール
-        run: npx playwright install chromium --with-deps
+        run: npx playwright install chromium webkit --with-deps
         working-directory: e2e/frontend
 
       - name: フロントエンドのビルド
