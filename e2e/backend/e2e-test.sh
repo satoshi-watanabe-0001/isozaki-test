@@ -9,7 +9,7 @@
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://localhost:8080}"
-REPORT_DIR="${REPORT_DIR:-e2e/reports}"
+REPORT_DIR="${REPORT_DIR:-e2e/backend/reports}"
 REPORT_FILE="${REPORT_DIR}/e2e-test-report.txt"
 PASS=0
 FAIL=0

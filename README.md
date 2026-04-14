@@ -162,18 +162,65 @@ cd backend
 ./gradlew jacocoTestCoverageVerification
 ```
 
-### E2Eテスト
+### Backend E2Eテスト
 
-Docker Compose 環境で E2E テストを実行します:
+Docker Compose 環境で Backend API の E2E テストを実行します:
 
 ```shell
 docker compose up -d --build
-chmod +x ./e2e/e2e-test.sh
-./e2e/e2e-test.sh
+chmod +x ./e2e/backend/e2e-test.sh
+./e2e/backend/e2e-test.sh
 docker compose down -v
 ```
 
-テストレポートは `e2e/reports/` ディレクトリに出力されます。
+テストレポートは `e2e/backend/reports/` ディレクトリに出力されます。
+
+### Frontend統合テスト（Playwright）
+
+Playwright を使用したフロントエンド統合テストを実行します。
+MSW（Mock Service Worker）によるAPIモック化により、バックエンド不要で実行可能です。
+
+```shell
+# フロントエンドのビルド・起動
+cd frontend
+npm install
+npm run build
+npm run start &
+
+# テスト実行
+cd ../e2e/frontend
+npm install
+npx playwright install chromium
+npx playwright test
+```
+
+#### デバイス別テスト実行
+
+```shell
+# PC（Desktop Chrome）のみ
+npm run test:pc
+
+# Android（Pixel 7）のみ
+npm run test:android
+
+# iPhone（iPhone 14）のみ
+npm run test:iphone
+```
+
+テストレポートは `e2e/frontend/reports/` ディレクトリに出力されます。
+HTMLレポートの表示:
+
+```shell
+npm run report
+```
+
+#### テスト対象デバイス
+
+| プロジェクト名 | デバイス | ビューポート | ブラウザ |
+|---|---|---|---|
+| PC（Desktop Chrome） | デスクトップ | 1280x720 | Chromium |
+| Android（Pixel 7） | Android | 393x851 | Chromium |
+| iPhone（iPhone 14） | iPhone | 390x844 | WebKit |
 
 ## APIエンドポイント
 
@@ -315,13 +362,25 @@ Redisからセッションを削除する。フロントエンドのログアウ
 │       │   └── LoginModal.test.tsx # ログインモーダル単体テスト
 │       └── contexts/
 │           └── AuthContext.tsx     # 認証コンテキスト・プロバイダー
-├── e2e/                            # E2Eテスト
-│   └── e2e-test.sh
+├── e2e/                            # E2E・統合テスト
+│   ├── backend/                   # Backend E2Eテスト
+│   │   └── e2e-test.sh            # curl + jq によるAPIテスト
+│   └── frontend/                  # Frontend統合テスト（Playwright + MSW）
+│       ├── playwright.config.ts   # Playwright設定（PC/Android/iPhone）
+│       ├── msw/                   # MSWモックハンドラー
+│       │   ├── handlers.ts
+│       │   └── setup.ts
+│       └── tests/                 # テストファイル
+│           ├── top-page.spec.ts
+│           ├── login-modal.spec.ts
+│           ├── auth-session.spec.ts
+│           └── header-cross-page.spec.ts
 ├── docker-compose.yml
 ├── init-db.sql
 └── .github/workflows/
     ├── unit-test.yml               # 単体テスト・カバレッジ検証
-    └── e2e-test.yml                # E2Eテスト（Docker環境）
+    ├── e2e-test.yml                # Backend E2Eテスト（Docker環境）
+    └── frontend-integration-test.yml # Frontend統合テスト（Playwright）
 ```
 
 ## 技術スタック
