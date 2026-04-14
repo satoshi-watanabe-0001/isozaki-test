@@ -3,7 +3,7 @@
  *
  * 未ログイン時・ログイン済み時の表示切替をテストする。
  */
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import Header from "@/components/Header";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -35,7 +35,7 @@ describe("Header", () => {
     renderWithAuth();
 
     expect(screen.getByText("ログイン")).toBeInTheDocument();
-    expect(screen.getByText("isozaki-test")).toBeInTheDocument();
+    expect(screen.getByText("Devin-Test")).toBeInTheDocument();
   });
 
   /**
@@ -70,7 +70,7 @@ describe("Header", () => {
 
   /**
    * 【テスト対象】Header コンポーネント
-   * 【テストケース】セッション復元時
+   * 【テストケース】セッション復元時（バックエンド検証成功）
    * 【期待結果】sessionStorageの情報からユーザーID・ユーザー名が表示される
    * 【ビジネス要件】ログインセッションのブラウザ保持
    */
@@ -82,6 +82,11 @@ describe("Header", () => {
     };
     sessionStorage.setItem("auth_session", JSON.stringify(mockSession));
 
+    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ sessionId: "test-session-id", userId: "test-user-id" }),
+    } as Response);
+
     renderWithAuth();
 
     expect(screen.getByTestId("user-id")).toHaveTextContent("ID: test-user-id");
@@ -92,9 +97,37 @@ describe("Header", () => {
 
   /**
    * 【テスト対象】Header コンポーネント
+   * 【テストケース】セッション復元時（バックエンド検証失敗）
+   * 【期待結果】sessionStorageのセッションが無効化され、未ログイン表示になる
+   * 【ビジネス要件】無効セッションの自動クリア
+   */
+  it("バックエンドでセッションが無効の場合に未ログイン表示になること", async () => {
+    const mockSession = {
+      sessionId: "expired-session-id",
+      userId: "test-user-id",
+      username: "テストユーザー",
+    };
+    sessionStorage.setItem("auth_session", JSON.stringify(mockSession));
+
+    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+    } as Response);
+
+    renderWithAuth();
+
+    await waitFor(() => {
+      expect(screen.getByText("ログイン")).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("user-id")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("user-name")).not.toBeInTheDocument();
+  });
+
+  /**
+   * 【テスト対象】Header コンポーネント
    * 【テストケース】ログアウトボタン押下時
    * 【期待結果】ユーザー情報が非表示になり、ログインボタンが再表示される
-   * 【ビジネス要件】ログアウト機能
+   * 【ビジネス要件】ログアウト機能（バックエンド連携）
    */
   it("ログアウトボタン押下時にログインボタンが再表示されること", () => {
     const mockSession = {
@@ -104,6 +137,11 @@ describe("Header", () => {
     };
     sessionStorage.setItem("auth_session", JSON.stringify(mockSession));
 
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ sessionId: "test-session-id", userId: "test-user-id" }),
+    } as Response);
+
     renderWithAuth();
 
     fireEvent.click(screen.getByText("ログアウト"));
@@ -111,5 +149,15 @@ describe("Header", () => {
     expect(screen.getByText("ログイン")).toBeInTheDocument();
     expect(screen.queryByTestId("user-id")).not.toBeInTheDocument();
     expect(screen.queryByTestId("user-name")).not.toBeInTheDocument();
+
+    // バックエンドのセッション削除APIが呼ばれることを確認
+    const deleteCalls = fetchSpy.mock.calls.filter(
+      (call) => {
+        const url = call[0] as string;
+        const options = call[1] as RequestInit | undefined;
+        return url.includes("/api/v1/session/") && options?.method === "DELETE";
+      },
+    );
+    expect(deleteCalls.length).toBe(1);
   });
 });

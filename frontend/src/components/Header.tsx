@@ -53,7 +53,7 @@ export default function Header(): ReactNode {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           {/* サイトタイトル */}
           <h1 className="text-lg font-bold text-gray-900">
-            isozaki-test
+            Devin-Test
           </h1>
 
           {/* 認証エリア */}

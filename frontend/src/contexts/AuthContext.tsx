@@ -13,6 +13,7 @@ import {
   useContext,
   useState,
   useCallback,
+  useEffect,
   type ReactNode,
 } from "react";
 
@@ -114,6 +115,34 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
   const [user, setUser] = useState<AuthUser | null>(() => loadSession());
 
   /**
+   * バックエンド側でセッションの有効性を検証する
+   *
+   * sessionStorageにセッション情報が存在する場合、
+   * バックエンドAPIでセッションがRedisに存在するか確認する。
+   * 無効な場合はローカルのセッション情報をクリアする。
+   */
+  useEffect(() => {
+    const validateSession = async (): Promise<void> => {
+      const storedUser: AuthUser | null = loadSession();
+      if (!storedUser) {
+        return;
+      }
+      try {
+        const response: Response = await fetch(
+          `${BACKEND_URL}/api/v1/session/${storedUser.sessionId}`,
+        );
+        if (!response.ok) {
+          setUser(null);
+          clearSession();
+        }
+      } catch {
+        // ネットワークエラー時はローカルのセッションを維持する
+      }
+    };
+    void validateSession();
+  }, []);
+
+  /**
    * ログイン処理
    *
    * バックエンドAPIにメールアドレスとパスワードを送信し、
@@ -145,9 +174,18 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
   /**
    * ログアウト処理
    *
-   * セッション情報をstateとsessionStorageからクリアする。
+   * バックエンドAPIでRedisのセッションを削除し、
+   * ローカルのセッション情報もクリアする。
    */
   const logout = useCallback((): void => {
+    const currentUser: AuthUser | null = loadSession();
+    if (currentUser) {
+      fetch(`${BACKEND_URL}/api/v1/session/${currentUser.sessionId}`, {
+        method: "DELETE",
+      }).catch(() => {
+        // ネットワークエラー時もローカルのセッションはクリアする
+      });
+    }
     setUser(null);
     clearSession();
   }, []);
