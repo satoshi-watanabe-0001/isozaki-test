@@ -44,5 +44,15 @@ nb-configuration.xml
 node_modules/
 .next/
 
+# Frontend テスト結果・カバレッジ
+frontend/test-results/
+
 # E2Eテストレポート
 e2e/reports/
+
+# Docker volumes
+postgres_data/
+redis_data/
+
+# Next.js 自動生成ファイル
+next-env.d.ts

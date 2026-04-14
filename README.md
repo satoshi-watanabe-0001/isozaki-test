@@ -33,6 +33,15 @@ Quarkus バックエンドと Next.js フロントエンドで構成されたモ
 
 ### Frontend
 
+- トップページに「frontendテストページ」メッセージを表示
+- 全ページ共通ヘッダー（「Devin-Test」タイトル表示）
+  - 未ログイン時：「ログイン」ボタンを表示
+  - ログイン済み時：ユーザーIDとユーザー名を表示、ログアウトボタンを表示
+- ログインモーダル（メールアドレス・パスワード入力、クローズボタン・オーバーレイクリック対応）
+- 認証状態管理（AuthContext）
+  - `sessionStorage`を使用したブラウザでのセッション保持
+  - ページ再アクセス時にバックエンドAPIでセッション有効性を検証
+  - ログアウト時にバックエンドAPIでRedisセッションを削除
 - ヘルスチェック状況表示ページ（`/test`）
 - Next.js の rewrites 機能による Backend へのAPIプロキシ
 
@@ -212,6 +221,39 @@ Content-Type: application/json
 }
 ```
 
+### セッション検証
+
+```
+GET /api/v1/session/{sessionId}
+```
+
+セッションIDの有効性をRedisで確認する。フロントエンドがページ再アクセス時にセッションがバックエンド側で保持されているかチェックするために使用する。
+
+**成功レスポンス（200 OK）:**
+
+```json
+{
+  "sessionId": "セッションID",
+  "userId": "ユーザのUUID"
+}
+```
+
+**セッション無効レスポンス（404 Not Found）:**
+
+レスポンスボディなし
+
+### セッション削除（ログアウト）
+
+```
+DELETE /api/v1/session/{sessionId}
+```
+
+Redisからセッションを削除する。フロントエンドのログアウト処理から呼び出される。
+
+**成功レスポンス（204 No Content）:**
+
+レスポンスボディなし
+
 ### ヘルスチェック
 
 | エンドポイント | 説明 |
@@ -246,7 +288,8 @@ Content-Type: application/json
 │       │   ├── repository/         # リポジトリ
 │       │   │   └── UserRepository.java
 │       │   ├── resource/           # RESTリソース
-│       │   │   └── LoginResource.java
+│       │   │   ├── LoginResource.java
+│       │   │   └── SessionResource.java
 │       │   └── service/            # ビジネスロジック
 │       │       ├── AuthService.java
 │       │       ├── PasswordService.java
@@ -258,11 +301,20 @@ Content-Type: application/json
 │   ├── Dockerfile
 │   ├── next.config.ts
 │   ├── package.json
-│   └── src/app/
-│       ├── layout.tsx
-│       ├── page.tsx
-│       └── test/
-│           └── page.tsx            # ヘルスチェック表示ページ
+│   └── src/
+│       ├── app/
+│       │   ├── layout.tsx          # AuthProvider・Header組み込み
+│       │   ├── page.tsx            # トップページ（frontendテストページ）
+│       │   ├── page.test.tsx       # トップページ単体テスト
+│       │   └── test/
+│       │       └── page.tsx        # ヘルスチェック表示ページ
+│       ├── components/
+│       │   ├── Header.tsx          # 共通ヘッダーコンポーネント
+│       │   ├── Header.test.tsx     # ヘッダー単体テスト
+│       │   ├── LoginModal.tsx      # ログインモーダルコンポーネント
+│       │   └── LoginModal.test.tsx # ログインモーダル単体テスト
+│       └── contexts/
+│           └── AuthContext.tsx     # 認証コンテキスト・プロバイダー
 ├── e2e/                            # E2Eテスト
 │   └── e2e-test.sh
 ├── docker-compose.yml

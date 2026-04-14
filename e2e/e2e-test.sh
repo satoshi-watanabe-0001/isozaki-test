@@ -120,6 +120,30 @@ do_post() {
     echo "${status}|${body}"
 }
 
+do_get() {
+    local url="$1"
+    local response
+    response=$(curl -s -w "\n%{http_code}" -X GET "${url}" \
+        -H "Accept: application/json" 2>/dev/null)
+    local status
+    status=$(echo "$response" | tail -1)
+    local body
+    body=$(echo "$response" | sed '$d')
+    echo "${status}|${body}"
+}
+
+do_delete() {
+    local url="$1"
+    local response
+    response=$(curl -s -w "\n%{http_code}" -X DELETE "${url}" \
+        -H "Accept: application/json" 2>/dev/null)
+    local status
+    status=$(echo "$response" | tail -1)
+    local body
+    body=$(echo "$response" | sed '$d')
+    echo "${status}|${body}"
+}
+
 # ============================================================================
 # テストケース
 # ============================================================================
@@ -254,6 +278,54 @@ else
     FAIL=$((FAIL + 1))
     log "  ✗ FAIL: セッションIDが同一または空 (session1=${session1}, session2=${session2})"
 fi
+
+log ""
+log "--------------------------------------------"
+log "テスト9: セッション検証API（有効なセッション）"
+log "--------------------------------------------"
+# ログインしてセッションIDを取得
+result=$(do_post "${BASE_URL}/api/v1/login" '{"email":"test@example.com","password":"password123"}')
+body=$(echo "$result" | cut -d'|' -f2-)
+VALID_SESSION_ID=$(echo "$body" | jq -r ".sessionId" 2>/dev/null)
+VALID_USER_ID=$(echo "$body" | jq -r ".userId" 2>/dev/null)
+
+# セッション検証APIを呼び出し
+result=$(do_get "${BASE_URL}/api/v1/session/${VALID_SESSION_ID}")
+status=$(echo "$result" | cut -d'|' -f1)
+body=$(echo "$result" | cut -d'|' -f2-)
+record_result "セッション検証（有効） - ステータスコード200" "200" "$status" "$body"
+assert_json_value "セッション検証（有効） - sessionIdが一致" "$body" "sessionId" "$VALID_SESSION_ID"
+assert_json_value "セッション検証（有効） - userIdが一致" "$body" "userId" "$VALID_USER_ID"
+
+log ""
+log "--------------------------------------------"
+log "テスト10: セッション検証API（無効なセッション）"
+log "--------------------------------------------"
+result=$(do_get "${BASE_URL}/api/v1/session/invalid-session-id-12345")
+status=$(echo "$result" | cut -d'|' -f1)
+body=$(echo "$result" | cut -d'|' -f2-)
+record_result "セッション検証（無効） - ステータスコード404" "404" "$status" "$body"
+
+log ""
+log "--------------------------------------------"
+log "テスト11: セッション削除API（ログアウト）"
+log "--------------------------------------------"
+# ログインしてセッションIDを取得
+result=$(do_post "${BASE_URL}/api/v1/login" '{"email":"test@example.com","password":"password123"}')
+body=$(echo "$result" | cut -d'|' -f2-)
+LOGOUT_SESSION_ID=$(echo "$body" | jq -r ".sessionId" 2>/dev/null)
+
+# セッション削除APIを呼び出し（ログアウト）
+result=$(do_delete "${BASE_URL}/api/v1/session/${LOGOUT_SESSION_ID}")
+status=$(echo "$result" | cut -d'|' -f1)
+body=$(echo "$result" | cut -d'|' -f2-)
+record_result "セッション削除 - ステータスコード204" "204" "$status" "$body"
+
+# 削除後にセッション検証APIを呼び出し（無効になっていること）
+result=$(do_get "${BASE_URL}/api/v1/session/${LOGOUT_SESSION_ID}")
+status=$(echo "$result" | cut -d'|' -f1)
+body=$(echo "$result" | cut -d'|' -f2-)
+record_result "セッション削除後の検証 - ステータスコード404" "404" "$status" "$body"
 
 # ============================================================================
 # テスト結果サマリ
