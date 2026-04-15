@@ -1,7 +1,7 @@
 /**
  * 【テスト対象】トップページ
  * 【テストケース】トップページの基本表示確認
- * 【期待結果】「frontendテストページ」メッセージとヘッダーが正しく表示される
+ * 【期待結果】ウェルカムメッセージ・アーティスト一覧リンク・ヘッダーが正しく表示される
  * 【ビジネス要件】フロントエンドトップページ表示機能
  */
 import { test, expect } from "@playwright/test";
@@ -13,7 +13,7 @@ test.describe("トップページ表示", () => {
     await setupMockRoutes(page);
   });
 
-  test("「frontendテストページ」メッセージが表示されること", async ({
+  test("「ようこそEntm-Cloneへ」ウェルカムメッセージが表示されること", async ({
     page,
   }) => {
     // Given: トップページにアクセスする
@@ -21,9 +21,36 @@ test.describe("トップページ表示", () => {
 
     // When: ページが読み込まれる
 
-    // Then: 「frontendテストページ」のテキストが表示される
-    const heading = page.locator("h1", { hasText: "frontendテストページ" });
+    // Then: 「ようこそEntm-Cloneへ」のウェルカムメッセージがh1として表示される
+    const heading = page.locator("h1", { hasText: "ようこそEntm-Cloneへ" });
     await expect(heading).toBeVisible();
+  });
+
+  test("「frontendテストページ」サブメッセージが表示されること", async ({
+    page,
+  }) => {
+    // Given: トップページにアクセスする
+    await page.goto("/");
+
+    // When: ページが読み込まれる
+
+    // Then: 「frontendテストページ」のサブメッセージが表示される
+    const subMessage = page.locator("p", { hasText: "frontendテストページ" });
+    await expect(subMessage).toBeVisible();
+  });
+
+  test("「アーティスト一覧」リンクが表示され遷移できること", async ({
+    page,
+  }) => {
+    // Given: トップページにアクセスする
+    await page.goto("/");
+
+    // When: ページが読み込まれる
+
+    // Then: 「アーティスト一覧」リンクが表示され、/artists へのhrefが設定されている
+    const artistLink = page.locator("a", { hasText: "アーティスト一覧" });
+    await expect(artistLink).toBeVisible();
+    await expect(artistLink).toHaveAttribute("href", "/artists");
   });
 
   test("共通ヘッダーが表示されること", async ({ page }) => {
