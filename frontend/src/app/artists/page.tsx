@@ -72,8 +72,8 @@ export default function ArtistsPage(): ReactNode {
   }
 
   return (
-    <div className="flex flex-col flex-1 bg-zinc-50 dark:bg-black">
-      <main className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="flex-1 bg-zinc-50 dark:bg-black">
+      <main className="mx-auto w-full max-w-3xl px-4 py-8 pb-16 sm:px-6 lg:px-8">
         <h1 className="mb-8 text-2xl font-bold text-gray-900 dark:text-zinc-50">
           アーティスト一覧
         </h1>
