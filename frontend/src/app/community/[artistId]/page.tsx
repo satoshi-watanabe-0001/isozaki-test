@@ -9,7 +9,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
-import { useParams } from "next/navigation";
+import { useParams, notFound } from "next/navigation";
 import Image from "next/image";
 import type { CommunityTop, MenuItem } from "@/types/community";
 
@@ -42,6 +42,7 @@ export default function CommunityTopPage(): ReactNode {
   const [communityData, setCommunityData] = useState<CommunityTop | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [notFoundFlag, setNotFoundFlag] = useState<boolean>(false);
 
   /** カルーセルの現在表示インデックス */
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
@@ -58,6 +59,10 @@ export default function CommunityTopPage(): ReactNode {
         const response: Response = await fetch(
           `${BACKEND_URL}/api/v1/community/${artistId}`,
         );
+        if (response.status === 404) {
+          setNotFoundFlag(true);
+          return;
+        }
         if (!response.ok) {
           throw new Error(
             `コミュニティ情報の取得に失敗しました（${response.status}）`,
@@ -116,14 +121,12 @@ export default function CommunityTopPage(): ReactNode {
     );
   }
 
+  if (notFoundFlag) {
+    notFound();
+  }
+
   if (error) {
-    return (
-      <div className="flex flex-1 items-center justify-center bg-zinc-50 dark:bg-black">
-        <p className="text-red-500" data-testid="error-message">
-          {error}
-        </p>
-      </div>
-    );
+    throw new Error(error);
   }
 
   if (!communityData) {

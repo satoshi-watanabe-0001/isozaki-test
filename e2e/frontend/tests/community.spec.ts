@@ -151,15 +151,22 @@ test.describe("コミュニティTOPページ", () => {
     ).toBeVisible();
   });
 
-  test("存在しないアーティストIDの場合にエラーメッセージが表示されること", async ({
+  test("存在しないアーティストIDの場合に共通404ページが表示されること", async ({
     page,
   }) => {
     // Given: 存在しないアーティストのコミュニティTOPページにアクセスする
     await page.goto("/community/unknown-artist");
 
-    // Then: エラーメッセージが表示される
-    const errorMessage = page.locator("[data-testid='error-message']");
-    await expect(errorMessage).toBeVisible();
+    // Then: 共通404エラーページが表示される
+    await expect(
+      page.locator("[data-testid='not-found-title']"),
+    ).toBeVisible();
+    await expect(
+      page.locator("[data-testid='not-found-title']"),
+    ).toHaveText("404 Not Found");
+    await expect(
+      page.locator("[data-testid='not-found-message']"),
+    ).toHaveText("ページが見つかりません");
   });
 
   test("関連データがないアーティストでもアーティスト名とメニューが表示されること", async ({
