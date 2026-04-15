@@ -10,6 +10,7 @@
 import type { ReactNode } from "react";
 import type { Artist } from "@/types/artist";
 import Image from "next/image";
+import Link from "next/link";
 
 /**
  * ArtistCardコンポーネントのProps定義
@@ -36,7 +37,7 @@ export default function ArtistCard({ artist }: ArtistCardProps): ReactNode {
   const iconUrl: string = artist.iconUrl ?? DEFAULT_ICON_PATH;
 
   return (
-    <div className="flex flex-col items-center" data-testid={`artist-card-${artist.artistId}`}>
+    <Link href={`/community/${artist.artistId}`} className="flex flex-col items-center" data-testid={`artist-card-${artist.artistId}`}>
       <div className="relative h-36 w-36 overflow-hidden rounded-full bg-gray-200">
         <Image
           src={iconUrl}
@@ -49,6 +50,6 @@ export default function ArtistCard({ artist }: ArtistCardProps): ReactNode {
       <p className="mt-2 text-center text-sm font-medium text-gray-900 dark:text-zinc-50">
         {artist.name}
       </p>
-    </div>
+    </Link>
   );
 }

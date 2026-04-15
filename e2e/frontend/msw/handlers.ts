@@ -48,6 +48,31 @@ const TEST_ARTISTS = [
   { artistId: "dreams-come-true", name: "DREAMS COME TRUE", nameKana: "どりーむずかむとぅるー", iconUrl: "/images/artists/dreams-come-true.svg" },
 ] as const;
 
+/** テスト用コミュニティTOPデータ */
+const TEST_COMMUNITY_DATA: Record<string, object> = {
+  aimyon: {
+    artistId: "aimyon",
+    name: "あいみょん",
+    images: [
+      { imageId: 1, imageUrl: "/images/artists/aimyon.svg", displayOrder: 1 },
+      { imageId: 2, imageUrl: "/images/artists/aimyon.svg", displayOrder: 2 },
+      { imageId: 3, imageUrl: "/images/artists/aimyon.svg", displayOrder: 3 },
+    ],
+    campaigns: [
+      { campaignId: 1, title: "ライブツアー2025", imageUrl: "/images/campaigns/default.svg" },
+      { campaignId: 2, title: "ニューアルバム発売記念", imageUrl: "/images/campaigns/default.svg" },
+      { campaignId: 3, title: "ファンクラブ限定イベント", imageUrl: "/images/campaigns/default.svg" },
+    ],
+    news: [
+      { newsId: 1, title: "ニューシングル「風になりたい」リリース決定", publishedAt: "2025-04-10T10:00:00Z" },
+      { newsId: 2, title: "全国ツアー2025 追加公演決定", publishedAt: "2025-04-08T12:00:00Z" },
+      { newsId: 3, title: "テレビ出演情報（4月）", publishedAt: "2025-04-05T09:00:00Z" },
+      { newsId: 4, title: "オフィシャルグッズ新商品のお知らせ", publishedAt: "2025-04-01T15:00:00Z" },
+      { newsId: 5, title: "ファンクラブ会員限定イベント開催", publishedAt: "2025-03-28T11:00:00Z" },
+    ],
+  },
+};
+
 /**
  * デフォルトのAPIモックハンドラー
  *
@@ -121,6 +146,38 @@ export const handlers = [
    */
   http.get(`${BACKEND_URL}/api/v1/artists`, () => {
     return HttpResponse.json(TEST_ARTISTS);
+  }),
+
+  /**
+   * コミュニティTOP API（GET /api/v1/community/:artistId）
+   *
+   * 指定アーティストのコミュニティTOPページ情報を返却する。
+   * アーティストが存在しない場合は404エラーを返却する。
+   */
+  http.get(`${BACKEND_URL}/api/v1/community/:artistId`, ({ params }) => {
+    const artistId = params.artistId as string;
+    const data = TEST_COMMUNITY_DATA[artistId];
+
+    if (data) {
+      return HttpResponse.json(data);
+    }
+
+    /** テスト用アーティストデータからデフォルトレスポンスを生成 */
+    const artist = TEST_ARTISTS.find((a) => a.artistId === artistId);
+    if (artist) {
+      return HttpResponse.json({
+        artistId: artist.artistId,
+        name: artist.name,
+        images: [],
+        campaigns: [],
+        news: [],
+      });
+    }
+
+    return HttpResponse.json(
+      { error: { code: "ARTIST_NOT_FOUND", message: "アーティストが見つかりません" } },
+      { status: 404 },
+    );
   }),
 
   /**

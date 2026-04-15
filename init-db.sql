@@ -81,3 +81,126 @@ INSERT INTO artists (artist_id, name, name_kana, icon_url, created_at, updated_a
     ('spitz', 'スピッツ', 'すぴっつ', '/images/artists/spitz.svg', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     ('dreams-come-true', 'DREAMS COME TRUE', 'どりーむずかむとぅるー', '/images/artists/dreams-come-true.svg', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (name) DO NOTHING;
+
+-- ============================================================================
+-- artist_imagesテーブルの作成（カルーセル用画像）
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS artist_images (
+    -- 画像ID（連番）
+    image_id SERIAL PRIMARY KEY,
+
+    -- アーティストID（外部キー）
+    artist_id VARCHAR(100) NOT NULL REFERENCES artists(artist_id),
+
+    -- 画像URL（フロントエンド静的ファイルのパス）
+    image_url VARCHAR(500) NOT NULL,
+
+    -- 表示順（昇順で表示）
+    display_order INT NOT NULL DEFAULT 0,
+
+    -- レコード作成日時
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- アーティストID検索用インデックス
+CREATE INDEX IF NOT EXISTS idx_artist_images_artist_id ON artist_images (artist_id);
+
+-- テスト用カルーセル画像データ（各アーティスト3件ずつ）
+INSERT INTO artist_images (artist_id, image_url, display_order, created_at) VALUES
+    ('aimyon', '/images/artists/aimyon.svg', 1, CURRENT_TIMESTAMP),
+    ('aimyon', '/images/artists/aimyon.svg', 2, CURRENT_TIMESTAMP),
+    ('aimyon', '/images/artists/aimyon.svg', 3, CURRENT_TIMESTAMP),
+    ('arashi', '/images/artists/arashi.svg', 1, CURRENT_TIMESTAMP),
+    ('arashi', '/images/artists/arashi.svg', 2, CURRENT_TIMESTAMP),
+    ('arashi', '/images/artists/arashi.svg', 3, CURRENT_TIMESTAMP),
+    ('ikimonogakari', '/images/artists/ikimonogakari.svg', 1, CURRENT_TIMESTAMP),
+    ('ikimonogakari', '/images/artists/ikimonogakari.svg', 2, CURRENT_TIMESTAMP),
+    ('ikimonogakari', '/images/artists/ikimonogakari.svg', 3, CURRENT_TIMESTAMP),
+    ('spitz', '/images/artists/spitz.svg', 1, CURRENT_TIMESTAMP),
+    ('spitz', '/images/artists/spitz.svg', 2, CURRENT_TIMESTAMP),
+    ('spitz', '/images/artists/spitz.svg', 3, CURRENT_TIMESTAMP)
+ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- campaignsテーブルの作成（キャンペーン情報）
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS campaigns (
+    -- キャンペーンID（連番）
+    campaign_id SERIAL PRIMARY KEY,
+
+    -- アーティストID（外部キー）
+    artist_id VARCHAR(100) NOT NULL REFERENCES artists(artist_id),
+
+    -- キャンペーンタイトル
+    title VARCHAR(255) NOT NULL,
+
+    -- キャンペーン画像URL（フロントエンド静的ファイルのパス）
+    image_url VARCHAR(500) NOT NULL,
+
+    -- 表示順（昇順で表示）
+    display_order INT NOT NULL DEFAULT 0,
+
+    -- レコード作成日時
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- アーティストID検索用インデックス
+CREATE INDEX IF NOT EXISTS idx_campaigns_artist_id ON campaigns (artist_id);
+
+-- テスト用キャンペーンデータ（各アーティスト3件ずつ）
+INSERT INTO campaigns (artist_id, title, image_url, display_order, created_at) VALUES
+    ('aimyon', 'ライブツアー2025', '/images/campaigns/default.svg', 1, CURRENT_TIMESTAMP),
+    ('aimyon', 'ニューアルバム発売記念', '/images/campaigns/default.svg', 2, CURRENT_TIMESTAMP),
+    ('aimyon', 'ファンクラブ限定イベント', '/images/campaigns/default.svg', 3, CURRENT_TIMESTAMP),
+    ('arashi', 'アニバーサリーフェス', '/images/campaigns/default.svg', 1, CURRENT_TIMESTAMP),
+    ('arashi', 'メンバーソロ企画', '/images/campaigns/default.svg', 2, CURRENT_TIMESTAMP),
+    ('arashi', 'グッズプレゼント', '/images/campaigns/default.svg', 3, CURRENT_TIMESTAMP),
+    ('spitz', '結成記念ライブ', '/images/campaigns/default.svg', 1, CURRENT_TIMESTAMP),
+    ('spitz', 'ベストアルバム投票', '/images/campaigns/default.svg', 2, CURRENT_TIMESTAMP),
+    ('spitz', 'スペシャルコラボ', '/images/campaigns/default.svg', 3, CURRENT_TIMESTAMP)
+ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- newsテーブルの作成（お知らせ情報）
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS news (
+    -- お知らせID（連番）
+    news_id SERIAL PRIMARY KEY,
+
+    -- アーティストID（外部キー）
+    artist_id VARCHAR(100) NOT NULL REFERENCES artists(artist_id),
+
+    -- お知らせタイトル
+    title VARCHAR(500) NOT NULL,
+
+    -- 公開日時（新着順ソートに使用）
+    published_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    -- レコード作成日時
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- アーティストID・公開日時検索用インデックス
+CREATE INDEX IF NOT EXISTS idx_news_artist_published ON news (artist_id, published_at DESC);
+
+-- テスト用お知らせデータ（各アーティスト5件ずつ）
+INSERT INTO news (artist_id, title, published_at, created_at) VALUES
+    ('aimyon', 'ニューシングル「風になりたい」リリース決定', '2025-04-10 10:00:00', CURRENT_TIMESTAMP),
+    ('aimyon', '全国ツアー2025 追加公演決定', '2025-04-08 12:00:00', CURRENT_TIMESTAMP),
+    ('aimyon', 'テレビ出演情報（4月）', '2025-04-05 09:00:00', CURRENT_TIMESTAMP),
+    ('aimyon', 'オフィシャルグッズ新商品のお知らせ', '2025-04-01 15:00:00', CURRENT_TIMESTAMP),
+    ('aimyon', 'ファンクラブ会員限定イベント開催', '2025-03-28 11:00:00', CURRENT_TIMESTAMP),
+    ('arashi', 'デジタルコンテンツ配信開始', '2025-04-12 10:00:00', CURRENT_TIMESTAMP),
+    ('arashi', 'メンバー出演ドラマ情報', '2025-04-09 14:00:00', CURRENT_TIMESTAMP),
+    ('arashi', '記念グッズ受注販売開始', '2025-04-06 10:00:00', CURRENT_TIMESTAMP),
+    ('arashi', 'ファンミーティング開催決定', '2025-04-03 12:00:00', CURRENT_TIMESTAMP),
+    ('arashi', 'オフィシャルサイトリニューアル', '2025-03-30 09:00:00', CURRENT_TIMESTAMP),
+    ('spitz', '新曲「青い車（Re-recording）」配信開始', '2025-04-11 10:00:00', CURRENT_TIMESTAMP),
+    ('spitz', 'ライブDVD/Blu-ray発売決定', '2025-04-07 11:00:00', CURRENT_TIMESTAMP),
+    ('spitz', 'ラジオ出演情報', '2025-04-04 09:00:00', CURRENT_TIMESTAMP),
+    ('spitz', 'SPITZ JAMBOREE TOUR 開催', '2025-04-02 15:00:00', CURRENT_TIMESTAMP),
+    ('spitz', 'ファンクラブ更新特典のご案内', '2025-03-29 10:00:00', CURRENT_TIMESTAMP)
+ON CONFLICT DO NOTHING;
