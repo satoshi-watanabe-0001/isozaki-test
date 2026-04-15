@@ -3,14 +3,16 @@
  *
  * アーティストのコミュニティTOPページを表示する。
  * アーティスト名、カルーセル画像、メニュー、キャンペーン、お知らせを縦に並べる。
+ * カルーセルにはEmbla Carouselを使用し、スライドアニメーションで画像を切り替える。
  *
  * @since 1.2
  */
 "use client";
 
-import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
+import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { useParams, notFound } from "next/navigation";
 import Image from "next/image";
+import useEmblaCarousel from "embla-carousel-react";
 import type { CommunityTop, MenuItem } from "@/types/community";
 
 /** バックエンドAPIのベースURL */
@@ -44,11 +46,29 @@ export default function CommunityTopPage(): ReactNode {
   const [error, setError] = useState<string | null>(null);
   const [notFoundFlag, setNotFoundFlag] = useState<boolean>(false);
 
+  /** Embla Carouselの初期化 */
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: false });
+
   /** カルーセルの現在表示インデックス */
   const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
 
-  /** カルーセルのタッチ操作用ref */
-  const touchStartX = useRef<number>(0);
+  /**
+   * Embla Carouselのスライド変更時にインジケーターを更新するコールバック
+   */
+  const onSelect = useCallback((): void => {
+    if (!emblaApi) return;
+    setCurrentImageIndex(emblaApi.selectedScrollSnap());
+  }, [emblaApi]);
+
+  /** Embla Carouselのイベントリスナー登録 */
+  useEffect(() => {
+    if (!emblaApi) return;
+    emblaApi.on("select", onSelect);
+    onSelect();
+    return () => {
+      emblaApi.off("select", onSelect);
+    };
+  }, [emblaApi, onSelect]);
 
   useEffect(() => {
     /**
@@ -83,32 +103,14 @@ export default function CommunityTopPage(): ReactNode {
   }, [artistId]);
 
   /**
-   * カルーセルのタッチ開始イベントハンドラ
+   * インジケータークリック時にカルーセルを指定スライドへスクロールする
    */
-  const handleTouchStart = useCallback(
-    (e: React.TouchEvent<HTMLDivElement>): void => {
-      touchStartX.current = e.touches[0].clientX;
+  const scrollTo = useCallback(
+    (index: number): void => {
+      if (!emblaApi) return;
+      emblaApi.scrollTo(index);
     },
-    [],
-  );
-
-  /**
-   * カルーセルのタッチ終了イベントハンドラ（横スワイプで画像切替）
-   */
-  const handleTouchEnd = useCallback(
-    (e: React.TouchEvent<HTMLDivElement>): void => {
-      if (!communityData) return;
-      const touchEndX: number = e.changedTouches[0].clientX;
-      const diff: number = touchStartX.current - touchEndX;
-      const threshold: number = 50;
-
-      if (diff > threshold && currentImageIndex < communityData.images.length - 1) {
-        setCurrentImageIndex((prev) => prev + 1);
-      } else if (diff < -threshold && currentImageIndex > 0) {
-        setCurrentImageIndex((prev) => prev - 1);
-      }
-    },
-    [communityData, currentImageIndex],
+    [emblaApi],
   );
 
   if (isLoading) {
@@ -144,23 +146,32 @@ export default function CommunityTopPage(): ReactNode {
           {communityData.name}
         </h1>
 
-        {/* カルーセル画像領域 */}
+        {/* カルーセル画像領域（Embla Carousel） */}
         {communityData.images.length > 0 && (
           <div className="mb-8" data-testid="carousel-section">
             <div
-              className="relative aspect-square w-full overflow-hidden rounded-lg bg-gray-200"
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
+              className="overflow-hidden rounded-lg"
+              ref={emblaRef}
               data-testid="carousel-container"
             >
-              <Image
-                src={communityData.images[currentImageIndex].imageUrl}
-                alt={`${communityData.name}の画像 ${currentImageIndex + 1}`}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 768px"
-                data-testid="carousel-image"
-              />
+              <div className="flex">
+                {communityData.images.map((image, index) => (
+                  <div
+                    key={image.imageId}
+                    className="relative aspect-square w-full flex-[0_0_100%] min-w-0 bg-gray-200"
+                    data-testid={`carousel-slide-${index}`}
+                  >
+                    <Image
+                      src={image.imageUrl}
+                      alt={`${communityData.name}の画像 ${index + 1}`}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 768px"
+                      data-testid={index === 0 ? "carousel-image" : undefined}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
             {/* カルーセルインジケーター */}
             {communityData.images.length > 1 && (
@@ -177,7 +188,7 @@ export default function CommunityTopPage(): ReactNode {
                         ? "bg-blue-600"
                         : "bg-gray-300"
                     }`}
-                    onClick={() => setCurrentImageIndex(index)}
+                    onClick={() => scrollTo(index)}
                     aria-label={`画像${index + 1}に移動`}
                     data-testid={`carousel-indicator-${index}`}
                   />
@@ -212,7 +223,10 @@ export default function CommunityTopPage(): ReactNode {
             <h2 className="mb-4 text-lg font-bold text-gray-900 dark:text-zinc-50">
               キャンペーン
             </h2>
-            <div className="flex gap-4 overflow-x-auto scrollbar-hide" data-testid="campaign-list">
+            <div
+              className="flex gap-4 overflow-x-auto campaign-scrollbar"
+              data-testid="campaign-list"
+            >
               {communityData.campaigns.map((campaign) => (
                 <div
                   key={campaign.campaignId}
