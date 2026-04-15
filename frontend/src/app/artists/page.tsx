@@ -68,13 +68,7 @@ export default function ArtistsPage(): ReactNode {
   }
 
   if (error) {
-    return (
-      <div className="flex flex-1 items-center justify-center bg-zinc-50 dark:bg-black">
-        <p className="text-red-500" data-testid="error-message">
-          {error}
-        </p>
-      </div>
-    );
+    throw new Error(error);
   }
 
   return (

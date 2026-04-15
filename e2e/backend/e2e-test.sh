@@ -327,6 +327,108 @@ status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "セッション削除後の検証 - ステータスコード404" "404" "$status" "$body"
 
+log ""
+log "--------------------------------------------"
+log "テスト12: アーティスト一覧API（正常系）"
+log "--------------------------------------------"
+result=$(do_get "${BASE_URL}/api/v1/artists")
+status=$(echo "$result" | cut -d'|' -f1)
+body=$(echo "$result" | cut -d'|' -f2-)
+record_result "アーティスト一覧 - ステータスコード200" "200" "$status" "$body"
+
+# 配列の件数を確認（10件の初期データが存在する）
+TOTAL=$((TOTAL + 1))
+artist_count=$(echo "$body" | jq 'length' 2>/dev/null)
+if [ "$artist_count" = "10" ]; then
+    PASS=$((PASS + 1))
+    log "  ✓ PASS: アーティスト一覧 - 10件取得 (count=${artist_count})"
+else
+    FAIL=$((FAIL + 1))
+    log "  ✗ FAIL: アーティスト一覧 - 件数不一致 (期待: 10, 実際: ${artist_count})"
+fi
+
+# 50音順ソートの確認（先頭が「あいみょん」）
+assert_json_value "アーティスト一覧 - 先頭がaimyon" "$body" "[0].artistId" "aimyon"
+assert_json_value "アーティスト一覧 - 先頭名があいみょん" "$body" "[0].name" "あいみょん"
+assert_json_field "アーティスト一覧 - iconUrlが存在" "$body" "[0].iconUrl"
+
+# 末尾のアーティストが50音順の最後であること
+assert_json_value "アーティスト一覧 - 末尾がdreams-come-true" "$body" "[9].artistId" "dreams-come-true"
+
+log ""
+log "--------------------------------------------"
+log "テスト13: コミュニティTOP API（正常系 - aimyon）"
+log "--------------------------------------------"
+result=$(do_get "${BASE_URL}/api/v1/community/aimyon")
+status=$(echo "$result" | cut -d'|' -f1)
+body=$(echo "$result" | cut -d'|' -f2-)
+record_result "コミュニティTOP（aimyon） - ステータスコード200" "200" "$status" "$body"
+assert_json_value "コミュニティTOP - artistIdがaimyon" "$body" "artistId" "aimyon"
+assert_json_value "コミュニティTOP - nameがあいみょん" "$body" "name" "あいみょん"
+
+# カルーセル画像の確認（最大3件）
+TOTAL=$((TOTAL + 1))
+image_count=$(echo "$body" | jq '.images | length' 2>/dev/null)
+if [ "$image_count" -ge 1 ] && [ "$image_count" -le 3 ]; then
+    PASS=$((PASS + 1))
+    log "  ✓ PASS: コミュニティTOP - images件数1〜3件 (count=${image_count})"
+else
+    FAIL=$((FAIL + 1))
+    log "  ✗ FAIL: コミュニティTOP - images件数が範囲外 (期待: 1〜3, 実際: ${image_count})"
+fi
+assert_json_field "コミュニティTOP - images[0].imageUrlが存在" "$body" "images[0].imageUrl"
+
+# キャンペーンの確認（最大3件）
+TOTAL=$((TOTAL + 1))
+campaign_count=$(echo "$body" | jq '.campaigns | length' 2>/dev/null)
+if [ "$campaign_count" -ge 1 ] && [ "$campaign_count" -le 3 ]; then
+    PASS=$((PASS + 1))
+    log "  ✓ PASS: コミュニティTOP - campaigns件数1〜3件 (count=${campaign_count})"
+else
+    FAIL=$((FAIL + 1))
+    log "  ✗ FAIL: コミュニティTOP - campaigns件数が範囲外 (期待: 1〜3, 実際: ${campaign_count})"
+fi
+assert_json_field "コミュニティTOP - campaigns[0].titleが存在" "$body" "campaigns[0].title"
+assert_json_field "コミュニティTOP - campaigns[0].imageUrlが存在" "$body" "campaigns[0].imageUrl"
+
+# お知らせの確認（最大5件）
+TOTAL=$((TOTAL + 1))
+news_count=$(echo "$body" | jq '.news | length' 2>/dev/null)
+if [ "$news_count" -ge 1 ] && [ "$news_count" -le 5 ]; then
+    PASS=$((PASS + 1))
+    log "  ✓ PASS: コミュニティTOP - news件数1〜5件 (count=${news_count})"
+else
+    FAIL=$((FAIL + 1))
+    log "  ✗ FAIL: コミュニティTOP - news件数が範囲外 (期待: 1〜5, 実際: ${news_count})"
+fi
+assert_json_field "コミュニティTOP - news[0].titleが存在" "$body" "news[0].title"
+assert_json_field "コミュニティTOP - news[0].publishedAtが存在" "$body" "news[0].publishedAt"
+
+log ""
+log "--------------------------------------------"
+log "テスト14: コミュニティTOP API（お知らせ新着順）"
+log "--------------------------------------------"
+# お知らせが新着順（publishedAt降順）であることを確認
+TOTAL=$((TOTAL + 1))
+first_date=$(echo "$body" | jq -r '.news[0].publishedAt' 2>/dev/null)
+last_date=$(echo "$body" | jq -r ".news[$((news_count - 1))].publishedAt" 2>/dev/null)
+if [[ "$first_date" > "$last_date" ]] || [[ "$first_date" = "$last_date" ]]; then
+    PASS=$((PASS + 1))
+    log "  ✓ PASS: お知らせ新着順確認 (先頭: ${first_date} >= 末尾: ${last_date})"
+else
+    FAIL=$((FAIL + 1))
+    log "  ✗ FAIL: お知らせが新着順でない (先頭: ${first_date}, 末尾: ${last_date})"
+fi
+
+log ""
+log "--------------------------------------------"
+log "テスト15: コミュニティTOP API（存在しないアーティスト）"
+log "--------------------------------------------"
+result=$(do_get "${BASE_URL}/api/v1/community/unknown-artist-id")
+status=$(echo "$result" | cut -d'|' -f1)
+body=$(echo "$result" | cut -d'|' -f2-)
+record_result "コミュニティTOP（不在） - ステータスコード404" "404" "$status" "$body"
+
 # ============================================================================
 # テスト結果サマリ
 # ============================================================================

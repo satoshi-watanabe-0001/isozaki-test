@@ -74,4 +74,19 @@ describe("ArtistCard", () => {
     );
     expect(card).toBeInTheDocument();
   });
+
+  /**
+   * 【テスト対象】ArtistCard コンポーネント
+   * 【テストケース】コミュニティTOPページへのリンク
+   * 【期待結果】/community/{artistId}へのリンクが設定される
+   * 【ビジネス要件】アーティストカードからコミュニティページへの遷移
+   */
+  it("コミュニティTOPページへのリンクが設定されること", () => {
+    render(<ArtistCard artist={mockArtist} />);
+
+    const link: HTMLElement = screen.getByTestId(
+      `artist-card-${mockArtist.artistId}`
+    );
+    expect(link.closest("a")).toHaveAttribute("href", `/community/${mockArtist.artistId}`);
+  });
 });

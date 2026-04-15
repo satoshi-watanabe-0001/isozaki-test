@@ -33,7 +33,7 @@ Quarkus バックエンドと Next.js フロントエンドで構成されたモ
 
 ### Frontend
 
-- トップページに「frontendテストページ」メッセージを表示
+- トップページに「ようこそEntm-Cloneへ」メッセージと「アーティスト一覧」リンクを表示
 - 全ページ共通ヘッダー（「Devin-Test」タイトル表示）
   - 未ログイン時：「ログイン」ボタンを表示
   - ログイン済み時：ユーザーIDとユーザー名を表示、ログアウトボタンを表示
@@ -42,6 +42,18 @@ Quarkus バックエンドと Next.js フロントエンドで構成されたモ
   - `sessionStorage`を使用したブラウザでのセッション保持
   - ページ再アクセス時にバックエンドAPIでセッション有効性を検証
   - ログアウト時にバックエンドAPIでRedisセッションを削除
+- アーティスト一覧ページ（`/artists`）
+  - バックエンドAPIから取得したアーティストを2列グリッドで50音順に表示
+  - 各アーティストカードからコミュニティTOPページへのリンク
+  - 「And more...」表示
+- コミュニティTOPページ（`/community/{artistId}`）
+  - アーティスト名表示（先頭）
+  - カルーセル画像（正方形、横スワイプ切替、最大3件、インジケーター付き）
+  - メニュー領域（4列: プロフィール・イベント・キャンペーン・スレッド・お知らせ・公式ページ）
+  - キャンペーン領域（スマホ横幅対応の正方形画像を横スクロール、スクロールバー非表示、最大3件）
+  - お知らせ領域（新着順でタイトル表示、最大5件）
+- 共通404エラーページ（「404 Not Found」「ページが見つかりません」表示）
+- 共通エラーページ（「エラーが発生しました」「TOPページへ戻る」リンク表示）
 - ヘルスチェック状況表示ページ（`/test`）
 - Next.js の rewrites 機能による Backend へのAPIプロキシ
 
@@ -224,6 +236,64 @@ npm run report
 
 ## APIエンドポイント
 
+### アーティスト一覧
+
+```
+GET /api/v1/artists
+```
+
+アーティスト一覧を50音順で取得する。
+
+**成功レスポンス（200 OK）:**
+
+```json
+[
+  {
+    "artistId": "aimyon",
+    "name": "あいみょん",
+    "nameKana": "あいみょん",
+    "iconUrl": "/images/artists/aimyon.svg"
+  }
+]
+```
+
+### コミュニティTOP
+
+```
+GET /api/v1/community/{artistId}
+```
+
+アーティストのコミュニティTOP情報（画像・キャンペーン・お知らせ）を集約取得する。
+
+**成功レスポンス（200 OK）:**
+
+```json
+{
+  "artistId": "aimyon",
+  "name": "あいみょん",
+  "images": [
+    { "imageId": 1, "imageUrl": "/images/artists/aimyon.svg", "displayOrder": 1 }
+  ],
+  "campaigns": [
+    { "campaignId": 1, "title": "ライブツアー2025", "imageUrl": "/images/campaigns/default.svg" }
+  ],
+  "news": [
+    { "newsId": 1, "title": "ニューシングルリリース決定", "publishedAt": "2025-04-10T10:00:00Z" }
+  ]
+}
+```
+
+**アーティスト未存在レスポンス（404 Not Found）:**
+
+```json
+{
+  "error": {
+    "code": "ARTIST_NOT_FOUND",
+    "message": "アーティストが見つかりません"
+  }
+}
+```
+
 ### ログイン
 
 ```
@@ -320,10 +390,19 @@ Redisからセッションを削除する。フロントエンドのログアウ
 │   └── src/
 │       ├── main/java/com/isozaki/auth/
 │       │   ├── dto/                # データ転送オブジェクト（Java Record）
+│       │   │   ├── ArtistImageResponse.java
+│       │   │   ├── ArtistResponse.java
+│       │   │   ├── CampaignResponse.java
+│       │   │   ├── CommunityTopResponse.java
 │       │   │   ├── ErrorResponse.java
 │       │   │   ├── LoginRequest.java
-│       │   │   └── LoginResponse.java
+│       │   │   ├── LoginResponse.java
+│       │   │   └── NewsResponse.java
 │       │   ├── entity/             # JPAエンティティ
+│       │   │   ├── ArtistEntity.java
+│       │   │   ├── ArtistImageEntity.java
+│       │   │   ├── CampaignEntity.java
+│       │   │   ├── NewsEntity.java
 │       │   │   └── UserEntity.java
 │       │   ├── exception/          # 例外クラス
 │       │   │   ├── AuthenticationException.java
@@ -333,12 +412,20 @@ Redisからセッションを削除する。フロントエンドのログアウ
 │       │   │   ├── DatabaseHealthCheck.java
 │       │   │   └── RedisHealthCheck.java
 │       │   ├── repository/         # リポジトリ
+│       │   │   ├── ArtistImageRepository.java
+│       │   │   ├── ArtistRepository.java
+│       │   │   ├── CampaignRepository.java
+│       │   │   ├── NewsRepository.java
 │       │   │   └── UserRepository.java
 │       │   ├── resource/           # RESTリソース
+│       │   │   ├── ArtistResource.java
+│       │   │   ├── CommunityResource.java
 │       │   │   ├── LoginResource.java
 │       │   │   └── SessionResource.java
 │       │   └── service/            # ビジネスロジック
+│       │       ├── ArtistService.java
 │       │       ├── AuthService.java
+│       │       ├── CommunityService.java
 │       │       ├── PasswordService.java
 │       │       ├── SessionService.java
 │       │       └── UuidService.java
@@ -351,17 +438,25 @@ Redisからセッションを削除する。フロントエンドのログアウ
 │   └── src/
 │       ├── app/
 │       │   ├── layout.tsx          # AuthProvider・Header組み込み
-│       │   ├── page.tsx            # トップページ（frontendテストページ）
-│       │   ├── page.test.tsx       # トップページ単体テスト
+│       │   ├── page.tsx            # トップページ（ようこそEntm-Cloneへ）
+│       │   ├── not-found.tsx       # 共通404エラーページ
+│       │   ├── error.tsx           # 共通エラーページ
+│       │   ├── artists/
+│       │   │   └── page.tsx        # アーティスト一覧ページ
+│       │   ├── community/
+│       │   │   └── [artistId]/
+│       │   │       └── page.tsx    # コミュニティTOPページ
 │       │   └── test/
 │       │       └── page.tsx        # ヘルスチェック表示ページ
 │       ├── components/
+│       │   ├── ArtistCard.tsx      # アーティストカードコンポーネント
 │       │   ├── Header.tsx          # 共通ヘッダーコンポーネント
-│       │   ├── Header.test.tsx     # ヘッダー単体テスト
-│       │   ├── LoginModal.tsx      # ログインモーダルコンポーネント
-│       │   └── LoginModal.test.tsx # ログインモーダル単体テスト
-│       └── contexts/
-│           └── AuthContext.tsx     # 認証コンテキスト・プロバイダー
+│       │   └── LoginModal.tsx      # ログインモーダルコンポーネント
+│       ├── contexts/
+│       │   └── AuthContext.tsx     # 認証コンテキスト・プロバイダー
+│       └── types/
+│           ├── artist.ts           # アーティスト型定義
+│           └── community.ts       # コミュニティ型定義
 ├── e2e/                            # E2E・統合テスト
 │   ├── backend/                   # Backend E2Eテスト
 │   │   └── e2e-test.sh            # curl + jq によるAPIテスト
@@ -374,12 +469,15 @@ Redisからセッションを削除する。フロントエンドのログアウ
 │           ├── top-page.spec.ts
 │           ├── login-modal.spec.ts
 │           ├── auth-session.spec.ts
-│           └── header-cross-page.spec.ts
+│           ├── header-cross-page.spec.ts
+│           ├── artists.spec.ts    # アーティスト一覧ページ統合テスト
+│           └── community.spec.ts  # コミュニティTOPページ統合テスト
 ├── docker-compose.yml
-├── init-db.sql
+├── init-db.sql                     # DB初期化（users, artists, artist_images, campaigns, news）
 └── .github/workflows/
     ├── unit-test.yml               # 単体テスト・カバレッジ検証
     ├── e2e-test.yml                # Backend E2Eテスト（Docker環境）
+    ├── frontend-test.yml           # フロントエンド単体テスト
     └── frontend-integration-test.yml # Frontend統合テスト（Playwright）
 ```
 
