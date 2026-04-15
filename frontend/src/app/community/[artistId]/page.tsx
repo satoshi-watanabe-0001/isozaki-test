@@ -213,19 +213,19 @@ export default function CommunityTopPage(): ReactNode {
               {communityData.campaigns.map((campaign) => (
                 <div
                   key={campaign.campaignId}
-                  className="flex-shrink-0"
+                  className="w-[calc(100vw-4rem)] max-w-xs flex-shrink-0"
                   data-testid={`campaign-item-${campaign.campaignId}`}
                 >
-                  <div className="relative h-40 w-40 overflow-hidden rounded-lg bg-gray-200">
+                  <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-gray-200">
                     <Image
                       src={campaign.imageUrl}
                       alt={campaign.title}
                       fill
                       className="object-cover"
-                      sizes="160px"
+                      sizes="(max-width: 640px) calc(100vw - 4rem), 320px"
                     />
                   </div>
-                  <p className="mt-2 w-40 truncate text-xs font-medium text-gray-700 dark:text-gray-300">
+                  <p className="mt-2 w-full truncate text-sm font-medium text-gray-700 dark:text-gray-300">
                     {campaign.title}
                   </p>
                 </div>
