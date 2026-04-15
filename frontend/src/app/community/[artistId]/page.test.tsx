@@ -16,6 +16,11 @@ vi.mock("next/navigation", () => ({
   notFound: () => { mockNotFound(); },
 }));
 
+/** embla-carousel-react のモック（テスト環境ではDOMレイアウトが存在しないため） */
+vi.mock("embla-carousel-react", () => ({
+  default: () => [vi.fn(), null],
+}));
+
 /** next/image のモック */
 vi.mock("next/image", () => ({
   default: (props: Record<string, unknown>) => {
@@ -67,6 +72,10 @@ describe("CommunityTopPage", () => {
         const { fill, ...rest } = props;
         return <img {...rest} data-fill={fill ? "true" : undefined} />;
       },
+    }));
+
+    vi.doMock("embla-carousel-react", () => ({
+      default: () => [vi.fn(), null],
     }));
 
     const mod = await import("@/app/community/[artistId]/page");
