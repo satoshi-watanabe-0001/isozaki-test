@@ -46,8 +46,8 @@ VALUES (
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS artists (
-    -- アーティストID（UUIDv7形式、PostgreSQL UUID型、プライマリキー）
-    artist_id UUID NOT NULL PRIMARY KEY,
+    -- アーティストID（英名文字列、URLパスとして利用可能、プライマリキー）
+    artist_id VARCHAR(100) NOT NULL PRIMARY KEY,
 
     -- アーティスト名（日本語入力可、UTF-8対応）
     name VARCHAR(255) NOT NULL UNIQUE,
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS artists (
     -- ソート用読み仮名（ひらがな、50音順ソートに使用）
     name_kana VARCHAR(255) NOT NULL,
 
-    -- アイコン画像のURL（ダミー画像使用）
+    -- アイコン画像のURL（フロントエンド静的ファイルのパス）
     icon_url VARCHAR(500),
 
     -- レコード作成日時
@@ -70,14 +70,14 @@ CREATE INDEX IF NOT EXISTS idx_artists_name_kana ON artists (name_kana);
 
 -- テスト用アーティストデータ（50音順で表示されるようname_kanaを設定）
 INSERT INTO artists (artist_id, name, name_kana, icon_url, created_at, updated_at) VALUES
-    (CAST('01908b7e-2001-7000-8000-000000000001' AS uuid), 'あいみょん', 'あいみょん', 'https://placehold.co/150x150?text=A', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    (CAST('01908b7e-2002-7000-8000-000000000002' AS uuid), 'いきものがかり', 'いきものがかり', 'https://placehold.co/150x150?text=I', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    (CAST('01908b7e-2003-7000-8000-000000000003' AS uuid), 'ウルフルズ', 'うるふるず', 'https://placehold.co/150x150?text=U', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    (CAST('01908b7e-2004-7000-8000-000000000004' AS uuid), 'EXILE', 'えぐざいる', 'https://placehold.co/150x150?text=E', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    (CAST('01908b7e-2005-7000-8000-000000000005' AS uuid), '大塚愛', 'おおつかあい', 'https://placehold.co/150x150?text=O', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    (CAST('01908b7e-2006-7000-8000-000000000006' AS uuid), '嵐', 'あらし', 'https://placehold.co/150x150?text=AR', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    (CAST('01908b7e-2007-7000-8000-000000000007' AS uuid), 'GLAY', 'ぐれい', 'https://placehold.co/150x150?text=GL', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    (CAST('01908b7e-2008-7000-8000-000000000008' AS uuid), 'サザンオールスターズ', 'さざんおーるすたーず', 'https://placehold.co/150x150?text=SA', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    (CAST('01908b7e-2009-7000-8000-000000000009' AS uuid), 'スピッツ', 'すぴっつ', 'https://placehold.co/150x150?text=SP', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    (CAST('01908b7e-200a-7000-8000-00000000000a' AS uuid), 'DREAMS COME TRUE', 'どりーむずかむとぅるー', 'https://placehold.co/150x150?text=DC', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ('aimyon', 'あいみょん', 'あいみょん', '/images/artists/aimyon.svg', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('ikimonogakari', 'いきものがかり', 'いきものがかり', '/images/artists/ikimonogakari.svg', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('ulfuls', 'ウルフルズ', 'うるふるず', '/images/artists/ulfuls.svg', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('exile', 'EXILE', 'えぐざいる', '/images/artists/exile.svg', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('otsuka-ai', '大塚愛', 'おおつかあい', '/images/artists/otsuka-ai.svg', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('arashi', '嵐', 'あらし', '/images/artists/arashi.svg', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('glay', 'GLAY', 'ぐれい', '/images/artists/glay.svg', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('southern-all-stars', 'サザンオールスターズ', 'さざんおーるすたーず', '/images/artists/southern-all-stars.svg', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('spitz', 'スピッツ', 'すぴっつ', '/images/artists/spitz.svg', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('dreams-come-true', 'DREAMS COME TRUE', 'どりーむずかむとぅるー', '/images/artists/dreams-come-true.svg', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (name) DO NOTHING;

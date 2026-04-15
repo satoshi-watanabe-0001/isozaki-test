@@ -22,22 +22,22 @@ describe("ArtistsPage", () => {
   /** テスト用のアーティストデータ（50音順） */
   const mockArtists: Artist[] = [
     {
-      artistId: "01908b7e-2001-7000-8000-000000000001",
+      artistId: "aimyon",
       name: "あいみょん",
       nameKana: "あいみょん",
-      iconUrl: "https://placehold.co/150x150?text=A",
+      iconUrl: "/images/artists/aimyon.svg",
     },
     {
-      artistId: "01908b7e-2006-7000-8000-000000000006",
+      artistId: "arashi",
       name: "嵐",
       nameKana: "あらし",
-      iconUrl: "https://placehold.co/150x150?text=AR",
+      iconUrl: "/images/artists/arashi.svg",
     },
     {
-      artistId: "01908b7e-2002-7000-8000-000000000002",
+      artistId: "ikimonogakari",
       name: "いきものがかり",
       nameKana: "いきものがかり",
-      iconUrl: "https://placehold.co/150x150?text=I",
+      iconUrl: "/images/artists/ikimonogakari.svg",
     },
   ];
 

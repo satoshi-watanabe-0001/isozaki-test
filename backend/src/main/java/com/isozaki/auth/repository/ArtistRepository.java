@@ -13,7 +13,6 @@ import com.isozaki.auth.entity.ArtistEntity;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * アーティストデータへのアクセスを提供するリポジトリ
@@ -21,7 +20,7 @@ import java.util.UUID;
  * @since 1.1
  */
 @ApplicationScoped
-public class ArtistRepository implements PanacheRepositoryBase<ArtistEntity, UUID> {
+public class ArtistRepository implements PanacheRepositoryBase<ArtistEntity, String> {
 
     /**
      * 全アーティストを読み仮名の50音順で取得する

@@ -12,9 +12,9 @@ package com.isozaki.auth.dto;
 /**
  * アーティスト情報のレスポンスデータ転送オブジェクト
  *
- * <p>アーティストID、アーティスト名、アイコンURLを含む。</p>
+ * <p>アーティストID（英名）、アーティスト名、アイコンURLを含む。</p>
  *
- * @param artistId アーティストID（UUIDv7）
+ * @param artistId アーティストID（英名文字列、URLパスとして利用可能）
  * @param name     アーティスト名
  * @param nameKana ソート用読み仮名（ひらがな）
  * @param iconUrl  アイコン画像のURL

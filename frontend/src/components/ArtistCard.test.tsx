@@ -10,10 +10,10 @@ import type { Artist } from "@/types/artist";
 
 describe("ArtistCard", () => {
   const mockArtist: Artist = {
-    artistId: "01908b7e-2001-7000-8000-000000000001",
+    artistId: "aimyon",
     name: "あいみょん",
     nameKana: "あいみょん",
-    iconUrl: "https://placehold.co/150x150?text=A",
+    iconUrl: "/images/artists/aimyon.svg",
   };
 
   /**
@@ -39,16 +39,16 @@ describe("ArtistCard", () => {
 
     const image: HTMLElement = screen.getByAltText("あいみょんのアイコン");
     expect(image).toBeInTheDocument();
-    expect(image).toHaveAttribute("src", "https://placehold.co/150x150?text=A");
+    expect(image).toHaveAttribute("src", "/images/artists/aimyon.svg");
   });
 
   /**
    * 【テスト対象】ArtistCard コンポーネント
    * 【テストケース】アイコンURLがnullの場合のフォールバック
-   * 【期待結果】アーティスト名の先頭文字を使ったダミー画像が表示される
-   * 【ビジネス要件】アイコン未設定時のダミー画像表示
+   * 【期待結果】デフォルトアイコン画像が表示される
+   * 【ビジネス要件】アイコン未設定時のデフォルト画像表示
    */
-  it("アイコンURLがnullの場合、ダミー画像が使用されること", () => {
+  it("アイコンURLがnullの場合、デフォルト画像が使用されること", () => {
     const artistWithoutIcon: Artist = {
       ...mockArtist,
       iconUrl: null,
@@ -57,7 +57,7 @@ describe("ArtistCard", () => {
 
     const image: HTMLElement = screen.getByAltText("あいみょんのアイコン");
     expect(image).toBeInTheDocument();
-    expect(image.getAttribute("src")).toContain("placehold.co");
+    expect(image).toHaveAttribute("src", "/images/artists/default.svg");
   });
 
   /**

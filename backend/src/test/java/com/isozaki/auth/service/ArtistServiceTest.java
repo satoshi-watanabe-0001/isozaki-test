@@ -22,7 +22,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -52,7 +51,7 @@ class ArtistServiceTest {
      */
     private ArtistEntity createArtistEntity(String id, String name, String nameKana, String iconUrl) {
         ArtistEntity entity = new ArtistEntity();
-        entity.artistId = UUID.fromString(id);
+        entity.artistId = id;
         entity.name = name;
         entity.nameKana = nameKana;
         entity.iconUrl = iconUrl;
@@ -72,8 +71,8 @@ class ArtistServiceTest {
     void shouldReturnArtistResponseList() {
         // Given: 50音順にソートされたアーティストエンティティ
         List<ArtistEntity> entities = List.of(
-                createArtistEntity("01908b7e-2001-7000-8000-000000000001", "あいみょん", "あいみょん", "https://placehold.co/150x150?text=A"),
-                createArtistEntity("01908b7e-2006-7000-8000-000000000006", "嵐", "あらし", "https://placehold.co/150x150?text=AR")
+                createArtistEntity("aimyon", "あいみょん", "あいみょん", "/images/artists/aimyon.svg"),
+                createArtistEntity("arashi", "嵐", "あらし", "/images/artists/arashi.svg")
         );
         when(artistRepository.findAllOrderByNameKana()).thenReturn(entities);
 
@@ -83,10 +82,10 @@ class ArtistServiceTest {
         // Then: EntityからDTOに正しく変換された結果が返却される
         assertNotNull(result);
         assertEquals(2, result.size());
-        assertEquals("01908b7e-2001-7000-8000-000000000001", result.get(0).artistId());
+        assertEquals("aimyon", result.get(0).artistId());
         assertEquals("あいみょん", result.get(0).name());
         assertEquals("あいみょん", result.get(0).nameKana());
-        assertEquals("https://placehold.co/150x150?text=A", result.get(0).iconUrl());
+        assertEquals("/images/artists/aimyon.svg", result.get(0).iconUrl());
         assertEquals("嵐", result.get(1).name());
         verify(artistRepository).findAllOrderByNameKana();
     }
@@ -123,7 +122,7 @@ class ArtistServiceTest {
     void shouldHandleNullIconUrl() {
         // Given: アイコンURLがnullのアーティスト
         List<ArtistEntity> entities = List.of(
-                createArtistEntity("01908b7e-2001-7000-8000-000000000001", "テストアーティスト", "てすとあーてぃすと", null)
+                createArtistEntity("test-artist", "テストアーティスト", "てすとあーてぃすと", null)
         );
         when(artistRepository.findAllOrderByNameKana()).thenReturn(entities);
 

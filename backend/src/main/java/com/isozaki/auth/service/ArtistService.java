@@ -62,7 +62,7 @@ public class ArtistService {
      */
     private ArtistResponse toResponse(ArtistEntity entity) {
         return new ArtistResponse(
-                entity.artistId.toString(),
+                entity.artistId,
                 entity.name,
                 entity.nameKana,
                 entity.iconUrl

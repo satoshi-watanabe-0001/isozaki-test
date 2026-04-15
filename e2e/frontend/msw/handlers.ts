@@ -34,6 +34,20 @@ interface LoginRequestBody {
   password: string;
 }
 
+/** テスト用アーティストデータ（50音順） */
+const TEST_ARTISTS = [
+  { artistId: "aimyon", name: "あいみょん", nameKana: "あいみょん", iconUrl: "/images/artists/aimyon.svg" },
+  { artistId: "arashi", name: "嵐", nameKana: "あらし", iconUrl: "/images/artists/arashi.svg" },
+  { artistId: "ikimonogakari", name: "いきものがかり", nameKana: "いきものがかり", iconUrl: "/images/artists/ikimonogakari.svg" },
+  { artistId: "ulfuls", name: "ウルフルズ", nameKana: "うるふるず", iconUrl: "/images/artists/ulfuls.svg" },
+  { artistId: "exile", name: "EXILE", nameKana: "えぐざいる", iconUrl: "/images/artists/exile.svg" },
+  { artistId: "otsuka-ai", name: "大塚愛", nameKana: "おおつかあい", iconUrl: "/images/artists/otsuka-ai.svg" },
+  { artistId: "glay", name: "GLAY", nameKana: "ぐれい", iconUrl: "/images/artists/glay.svg" },
+  { artistId: "southern-all-stars", name: "サザンオールスターズ", nameKana: "さざんおーるすたーず", iconUrl: "/images/artists/southern-all-stars.svg" },
+  { artistId: "spitz", name: "スピッツ", nameKana: "すぴっつ", iconUrl: "/images/artists/spitz.svg" },
+  { artistId: "dreams-come-true", name: "DREAMS COME TRUE", nameKana: "どりーむずかむとぅるー", iconUrl: "/images/artists/dreams-come-true.svg" },
+] as const;
+
 /**
  * デフォルトのAPIモックハンドラー
  *
@@ -98,6 +112,15 @@ export const handlers = [
    */
   http.delete(`${BACKEND_URL}/api/v1/session/:sessionId`, () => {
     return new HttpResponse(null, { status: 204 });
+  }),
+
+  /**
+   * アーティスト一覧API（GET /api/v1/artists）
+   *
+   * 50音順にソートされたアーティスト一覧を返却する。
+   */
+  http.get(`${BACKEND_URL}/api/v1/artists`, () => {
+    return HttpResponse.json(TEST_ARTISTS);
   }),
 
   /**

@@ -9,10 +9,10 @@
 /**
  * アーティスト情報の型
  *
- * @property artistId - アーティストID（UUIDv7）
+ * @property artistId - アーティストID（英名文字列、URLパスとして利用可能）
  * @property name - アーティスト名
  * @property nameKana - ソート用読み仮名（ひらがな）
- * @property iconUrl - アイコン画像のURL
+ * @property iconUrl - アイコン画像のURL（フロントエンド静的ファイルのパス）
  */
 export interface Artist {
   artistId: string;

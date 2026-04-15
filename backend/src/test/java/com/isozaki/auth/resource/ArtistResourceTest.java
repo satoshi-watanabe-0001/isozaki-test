@@ -56,9 +56,9 @@ class ArtistResourceTest {
     void shouldReturnOkWithArtistList() {
         // Given: 50音順にソートされたアーティスト一覧
         List<ArtistResponse> expectedArtists = List.of(
-                new ArtistResponse("01908b7e-2001-7000-8000-000000000001", "あいみょん", "あいみょん", "https://placehold.co/150x150?text=A"),
-                new ArtistResponse("01908b7e-2006-7000-8000-000000000006", "嵐", "あらし", "https://placehold.co/150x150?text=AR"),
-                new ArtistResponse("01908b7e-2002-7000-8000-000000000002", "いきものがかり", "いきものがかり", "https://placehold.co/150x150?text=I")
+                new ArtistResponse("aimyon", "あいみょん", "あいみょん", "/images/artists/aimyon.svg"),
+                new ArtistResponse("arashi", "嵐", "あらし", "/images/artists/arashi.svg"),
+                new ArtistResponse("ikimonogakari", "いきものがかり", "いきものがかり", "/images/artists/ikimonogakari.svg")
         );
         when(artistService.getAllArtists()).thenReturn(expectedArtists);
 

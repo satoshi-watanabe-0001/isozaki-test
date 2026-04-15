@@ -2,7 +2,7 @@
  * アーティストエンティティクラス
  *
  * <p>アーティスト情報をPostgreSQLに永続化するためのJPAエンティティ。
- * UUIDv7を主キーとし、アーティスト名の一意性を保証する。</p>
+ * アーティストの英名を主キーとし、URLパスとしても利用可能にする。</p>
  *
  * @since 1.1
  */
@@ -15,12 +15,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.UUID;
 
 /**
  * アーティスト情報を保持するエンティティ
  *
- * <p>アーティストID（UUIDv7）、アーティスト名（日本語対応）、
+ * <p>アーティストID（英名文字列）、アーティスト名（日本語対応）、
  * ソート用読み仮名（ひらがな）を管理する。</p>
  *
  * @since 1.1
@@ -30,11 +29,11 @@ import java.util.UUID;
 public class ArtistEntity extends PanacheEntityBase {
 
     /**
-     * アーティストID（UUIDv7形式）
+     * アーティストID（英名文字列、URLパスとして利用可能）
      */
     @Id
-    @Column(name = "artist_id", nullable = false, columnDefinition = "uuid")
-    public UUID artistId;
+    @Column(name = "artist_id", nullable = false, length = 100)
+    public String artistId;
 
     /**
      * アーティスト名（日本語入力可）
@@ -49,7 +48,7 @@ public class ArtistEntity extends PanacheEntityBase {
     public String nameKana;
 
     /**
-     * アイコン画像のURL
+     * アイコン画像のURL（フロントエンド静的ファイルのパス）
      */
     @Column(name = "icon_url", length = 500)
     public String iconUrl;
