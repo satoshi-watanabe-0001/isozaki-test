@@ -17,10 +17,10 @@ import com.isozaki.auth.dto.ThreadListItemResponse;
 import com.isozaki.auth.dto.ThreadListResponse;
 import com.isozaki.auth.entity.ThreadCommentEntity;
 import com.isozaki.auth.entity.ThreadEntity;
-import com.isozaki.auth.entity.UserEntity;
 import com.isozaki.auth.repository.ArtistRepository;
 import com.isozaki.auth.repository.ThreadCommentRepository;
 import com.isozaki.auth.repository.ThreadRepository;
+import com.isozaki.auth.repository.UserRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -44,6 +44,7 @@ public class ThreadService {
     private final ThreadCommentRepository threadCommentRepository;
     private final ArtistRepository artistRepository;
     private final SessionService sessionService;
+    private final UserRepository userRepository;
 
     /**
      * 各リポジトリ・サービスを注入してスレッドサービスを初期化する
@@ -52,17 +53,20 @@ public class ThreadService {
      * @param threadCommentRepository コメントリポジトリ
      * @param artistRepository        アーティストリポジトリ
      * @param sessionService          セッション管理サービス
+     * @param userRepository          ユーザリポジトリ
      */
     @Inject
     public ThreadService(
             ThreadRepository threadRepository,
             ThreadCommentRepository threadCommentRepository,
             ArtistRepository artistRepository,
-            SessionService sessionService) {
+            SessionService sessionService,
+            UserRepository userRepository) {
         this.threadRepository = threadRepository;
         this.threadCommentRepository = threadCommentRepository;
         this.artistRepository = artistRepository;
         this.sessionService = sessionService;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -91,7 +95,8 @@ public class ThreadService {
         List<ThreadListItemResponse> items = threads.stream()
                 .map(this::toThreadListItem)
                 .sorted((a, b) -> {
-                    // 最新コメント日時の降順ソート（コメントがないスレッドはスレッド作成日時でソート）
+                    // 最新コメント日時の降順ソート
+                    // コメントがないスレッドはスレッド作成日時でソート
                     Instant aTime = a.latestCommentAt();
                     Instant bTime = b.latestCommentAt();
                     if (aTime == null && bTime == null) {
@@ -152,11 +157,13 @@ public class ThreadService {
     /**
      * 新しいスレッドを作成する
      *
-     * <p>セッションIDからユーザを特定し、スレッドと初回コメントを同時に作成する。</p>
+     * <p>セッションIDからユーザを特定し、
+     * スレッドと初回コメントを同時に作成する。</p>
      *
      * @param artistId アーティストID
      * @param request  スレッド作成リクエスト
-     * @return 作成されたスレッドの詳細レスポンス（認証失敗・アーティスト不在時はOptional.empty）
+     * @return 作成されたスレッドの詳細レスポンス
+     *         （認証失敗・アーティスト不在時はOptional.empty）
      */
     @Transactional
     public Optional<ThreadDetailResponse> createThread(String artistId, CreateThreadRequest request) {
@@ -280,10 +287,8 @@ public class ThreadService {
      * @return ユーザ名
      */
     private String resolveUsername(UUID userId) {
-        UserEntity user = UserEntity.find("userId", userId).firstResult();
-        if (user == null) {
-            return "不明なユーザ";
-        }
-        return user.username;
+        return userRepository.findByUserId(userId)
+                .map(user -> user.username)
+                .orElse("不明なユーザ");
     }
 }
