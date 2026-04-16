@@ -30,7 +30,7 @@ test.describe("スレッド一覧ページ", () => {
 
     // Then: 作成ユーザ名が表示される
     await expect(page.locator("text=テストユーザ").first()).toBeVisible();
-    await expect(page.locator("text=テストユーザ2")).toBeVisible();
+    await expect(page.locator("text=テストユーザ2").first()).toBeVisible();
   });
 
   test("スレッド領域クリックで詳細ページに遷移すること", async ({ page }) => {
@@ -53,7 +53,7 @@ test.describe("スレッド一覧ページ", () => {
 
     // Then: ログイン促進ダイアログが表示される
     await expect(page.locator("[data-testid='login-prompt-dialog']")).toBeVisible();
-    await expect(page.locator("text=ログインが必要です")).toBeVisible();
+    await expect(page.locator("[data-testid='login-prompt-dialog'] h2")).toContainText("ログインが必要です");
   });
 
   test("スレッドの最新コメント日時が相対表示されること", async ({ page }) => {
@@ -95,7 +95,7 @@ test.describe("スレッド詳細ページ", () => {
     await page.goto("/community/aimyon/threads/1");
 
     // Then: コメントユーザ名が表示される
-    await expect(page.locator("text=テストユーザ2")).toBeVisible();
+    await expect(page.locator("text=テストユーザ2").first()).toBeVisible();
 
     // Then: 相対日時表示が含まれる
     await expect(page.locator("text=/\\d+(秒前|分前|時間前)/").first()).toBeVisible();
