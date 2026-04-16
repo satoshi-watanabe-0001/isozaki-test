@@ -194,4 +194,57 @@ export const handlers = [
       ],
     });
   }),
+
+  /**
+   * スレッド一覧API（GET /api/v1/community/:artistId/threads）
+   *
+   * スレッド作成API（POST /api/v1/community/:artistId/threads）
+   */
+  http.get(`${BACKEND_URL}/api/v1/community/:artistId/threads`, () => {
+    return HttpResponse.json({
+      threads: [
+        { threadId: 1, title: "テストスレッド1", createdByUsername: "テストユーザ", latestComment: "最新コメント", latestCommentAt: new Date().toISOString() },
+      ],
+      totalCount: 1,
+      page: 1,
+      size: 20,
+      totalPages: 1,
+    });
+  }),
+
+  http.post(`${BACKEND_URL}/api/v1/community/:artistId/threads`, () => {
+    return HttpResponse.json(
+      { threadId: 100, title: "新規スレッド", createdByUsername: "テストユーザ", createdAt: new Date().toISOString(), comments: [], totalComments: 0, page: 1, size: 10, totalPages: 0 },
+      { status: 201 },
+    );
+  }),
+
+  /**
+   * スレッド詳細API（GET /api/v1/community/:artistId/threads/:threadId）
+   */
+  http.get(`${BACKEND_URL}/api/v1/community/:artistId/threads/:threadId`, () => {
+    return HttpResponse.json({
+      threadId: 1,
+      title: "テストスレッド1",
+      createdByUsername: "テストユーザ",
+      createdAt: new Date().toISOString(),
+      comments: [
+        { commentId: 1, content: "テストコメント", createdByUsername: "テストユーザ", createdAt: new Date().toISOString() },
+      ],
+      totalComments: 1,
+      page: 1,
+      size: 10,
+      totalPages: 1,
+    });
+  }),
+
+  /**
+   * コメント追加API（POST /api/v1/community/:artistId/threads/:threadId/comments）
+   */
+  http.post(`${BACKEND_URL}/api/v1/community/:artistId/threads/:threadId/comments`, () => {
+    return HttpResponse.json(
+      { commentId: 100, content: "新規コメント", createdByUsername: "テストユーザ", createdAt: new Date().toISOString() },
+      { status: 201 },
+    );
+  }),
 ];

@@ -429,6 +429,113 @@ status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "コミュニティTOP（不在） - ステータスコード404" "404" "$status" "$body"
 
+log ""
+log "--------------------------------------------"
+log "テスト16: スレッド一覧API（正常系 - aimyon）"
+log "--------------------------------------------"
+result=$(do_get "${BASE_URL}/api/v1/community/aimyon/threads?page=1&size=20")
+status=$(echo "$result" | cut -d'|' -f1)
+body=$(echo "$result" | cut -d'|' -f2-)
+record_result "スレッド一覧（aimyon） - ステータスコード200" "200" "$status" "$body"
+assert_json_field "スレッド一覧 - threadsが存在" "$body" "threads"
+assert_json_field "スレッド一覧 - totalCountが存在" "$body" "totalCount"
+assert_json_field "スレッド一覧 - totalPagesが存在" "$body" "totalPages"
+
+# スレッド件数の確認
+TOTAL=$((TOTAL + 1))
+thread_count=$(echo "$body" | jq '.threads | length' 2>/dev/null)
+if [ "$thread_count" -ge 1 ]; then
+    PASS=$((PASS + 1))
+    log "  ✓ PASS: スレッド一覧 - 1件以上取得 (count=${thread_count})"
+else
+    FAIL=$((FAIL + 1))
+    log "  ✗ FAIL: スレッド一覧 - 件数が0 (count=${thread_count})"
+fi
+
+# スレッド一覧の各アイテムにタイトル・ユーザ名が含まれること
+assert_json_field "スレッド一覧 - threads[0].titleが存在" "$body" "threads[0].title"
+assert_json_field "スレッド一覧 - threads[0].createdByUsernameが存在" "$body" "threads[0].createdByUsername"
+
+log ""
+log "--------------------------------------------"
+log "テスト17: スレッド一覧API（存在しないアーティスト）"
+log "--------------------------------------------"
+result=$(do_get "${BASE_URL}/api/v1/community/unknown-artist-id/threads?page=1&size=20")
+status=$(echo "$result" | cut -d'|' -f1)
+body=$(echo "$result" | cut -d'|' -f2-)
+record_result "スレッド一覧（不在） - ステータスコード404" "404" "$status" "$body"
+
+log ""
+log "--------------------------------------------"
+log "テスト18: スレッド詳細API（正常系）"
+log "--------------------------------------------"
+# 既存のスレッドID=1で詳細を取得
+result=$(do_get "${BASE_URL}/api/v1/community/aimyon/threads/1?page=1&size=10")
+status=$(echo "$result" | cut -d'|' -f1)
+body=$(echo "$result" | cut -d'|' -f2-)
+record_result "スレッド詳細 - ステータスコード200" "200" "$status" "$body"
+assert_json_field "スレッド詳細 - titleが存在" "$body" "title"
+assert_json_field "スレッド詳細 - createdByUsernameが存在" "$body" "createdByUsername"
+assert_json_field "スレッド詳細 - commentsが存在" "$body" "comments"
+assert_json_field "スレッド詳細 - totalCommentsが存在" "$body" "totalComments"
+
+log ""
+log "--------------------------------------------"
+log "テスト19: スレッド詳細API（存在しないスレッド）"
+log "--------------------------------------------"
+result=$(do_get "${BASE_URL}/api/v1/community/aimyon/threads/99999?page=1&size=10")
+status=$(echo "$result" | cut -d'|' -f1)
+body=$(echo "$result" | cut -d'|' -f2-)
+record_result "スレッド詳細（不在） - ステータスコード404" "404" "$status" "$body"
+
+log ""
+log "--------------------------------------------"
+log "テスト20: スレッド作成API（認証なし）"
+log "--------------------------------------------"
+result=$(do_post "${BASE_URL}/api/v1/community/aimyon/threads" '{"title":"テスト","comment":"コメント","sessionId":"invalid-session"}')
+status=$(echo "$result" | cut -d'|' -f1)
+body=$(echo "$result" | cut -d'|' -f2-)
+record_result "スレッド作成（認証なし） - ステータスコード401" "401" "$status" "$body"
+
+log ""
+log "--------------------------------------------"
+log "テスト21: スレッド作成API（正常系）"
+log "--------------------------------------------"
+# ログインしてセッションIDを取得
+login_result=$(do_post "${BASE_URL}/api/v1/login" '{"email":"test@example.com","password":"password123"}')
+login_body=$(echo "$login_result" | cut -d'|' -f2-)
+THREAD_SESSION_ID=$(echo "$login_body" | jq -r ".sessionId" 2>/dev/null)
+
+result=$(do_post "${BASE_URL}/api/v1/community/aimyon/threads" "{\"title\":\"E2Eテストスレッド\",\"comment\":\"E2Eテストコメント\",\"sessionId\":\"${THREAD_SESSION_ID}\"}")
+status=$(echo "$result" | cut -d'|' -f1)
+body=$(echo "$result" | cut -d'|' -f2-)
+record_result "スレッド作成（正常） - ステータスコード201" "201" "$status" "$body"
+assert_json_field "スレッド作成 - threadIdが存在" "$body" "threadId"
+assert_json_value "スレッド作成 - titleが一致" "$body" "title" "E2Eテストスレッド"
+
+log ""
+log "--------------------------------------------"
+log "テスト22: コメント追加API（正常系）"
+log "--------------------------------------------"
+# 作成したスレッドのIDを取得
+NEW_THREAD_ID=$(echo "$body" | jq -r ".threadId" 2>/dev/null)
+
+result=$(do_post "${BASE_URL}/api/v1/community/aimyon/threads/${NEW_THREAD_ID}/comments" "{\"content\":\"E2Eテスト追加コメント\",\"sessionId\":\"${THREAD_SESSION_ID}\"}")
+status=$(echo "$result" | cut -d'|' -f1)
+body=$(echo "$result" | cut -d'|' -f2-)
+record_result "コメント追加（正常） - ステータスコード201" "201" "$status" "$body"
+assert_json_field "コメント追加 - commentIdが存在" "$body" "commentId"
+assert_json_value "コメント追加 - contentが一致" "$body" "content" "E2Eテスト追加コメント"
+
+log ""
+log "--------------------------------------------"
+log "テスト23: コメント追加API（認証なし）"
+log "--------------------------------------------"
+result=$(do_post "${BASE_URL}/api/v1/community/aimyon/threads/1/comments" '{"content":"テスト","sessionId":"invalid-session"}')
+status=$(echo "$result" | cut -d'|' -f1)
+body=$(echo "$result" | cut -d'|' -f2-)
+record_result "コメント追加（認証なし） - ステータスコード401" "401" "$status" "$body"
+
 # ============================================================================
 # テスト結果サマリ
 # ============================================================================

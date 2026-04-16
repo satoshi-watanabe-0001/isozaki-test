@@ -12,6 +12,7 @@
 import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { useParams, notFound } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import useEmblaCarousel from "embla-carousel-react";
 import type { CommunityTop, MenuItem } from "@/types/community";
 
@@ -19,12 +20,15 @@ import type { CommunityTop, MenuItem } from "@/types/community";
 const BACKEND_URL: string =
   process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8080";
 
-/** メニュー項目の定義（4列×2行 = 6項目） */
+/**
+ * メニュー項目の定義（4列×2行 = 6項目）
+ * hrefが設定されているメニューはリンクとして遷移する
+ */
 const MENU_ITEMS: MenuItem[] = [
   { label: "プロフィール", icon: "👤" },
   { label: "イベント", icon: "🎵" },
   { label: "キャンペーン", icon: "🎁" },
-  { label: "スレッド", icon: "💬" },
+  { label: "スレッド", icon: "💬", href: "threads" },
   { label: "お知らせ", icon: "📢" },
   { label: "公式ページ", icon: "🌐" },
 ];
@@ -201,19 +205,42 @@ export default function CommunityTopPage(): ReactNode {
         {/* メニュー領域 */}
         <div className="mb-8" data-testid="menu-section">
           <div className="grid grid-cols-4 gap-4">
-            {MENU_ITEMS.map((item: MenuItem) => (
-              <button
-                key={item.label}
-                type="button"
-                className="flex flex-col items-center gap-1 rounded-lg p-3 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-800"
-                data-testid={`menu-item-${item.label}`}
-              >
-                <span className="text-2xl">{item.icon}</span>
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                  {item.label}
-                </span>
-              </button>
-            ))}
+            {MENU_ITEMS.map((item: MenuItem) => {
+              /** メニュー内部の共通コンテンツ */
+              const menuContent: ReactNode = (
+                <>
+                  <span className="text-2xl">{item.icon}</span>
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    {item.label}
+                  </span>
+                </>
+              );
+
+              // hrefが設定されている場合はLinkコンポーネントでラップ
+              if (item.href !== undefined) {
+                return (
+                  <Link
+                    key={item.label}
+                    href={`/community/${artistId}/${item.href}`}
+                    className="flex flex-col items-center gap-1 rounded-lg p-3 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-800"
+                    data-testid={`menu-item-${item.label}`}
+                  >
+                    {menuContent}
+                  </Link>
+                );
+              }
+
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  className="flex flex-col items-center gap-1 rounded-lg p-3 transition-colors hover:bg-gray-100 dark:hover:bg-zinc-800"
+                  data-testid={`menu-item-${item.label}`}
+                >
+                  {menuContent}
+                </button>
+              );
+            })}
           </div>
         </div>
 

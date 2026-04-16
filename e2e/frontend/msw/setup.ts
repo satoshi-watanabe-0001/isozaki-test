@@ -251,4 +251,103 @@ export async function setupMockRoutes(
   });
 }
 
-export { BACKEND_URL, TEST_USER, TEST_CREDENTIALS, TEST_ARTISTS, TEST_COMMUNITY_DATA };
+/** テスト用スレッド一覧データ */
+const TEST_THREAD_LIST = {
+  threads: [
+    { threadId: 1, title: "テストスレッド1", createdByUsername: "テストユーザ", latestComment: "最新コメント1", latestCommentAt: new Date(Date.now() - 3600000).toISOString() },
+    { threadId: 2, title: "テストスレッド2", createdByUsername: "テストユーザ2", latestComment: "最新コメント2", latestCommentAt: new Date(Date.now() - 7200000).toISOString() },
+    { threadId: 3, title: "テストスレッド3", createdByUsername: "テストユーザ", latestComment: null, latestCommentAt: new Date(Date.now() - 86400000 * 2).toISOString() },
+  ],
+  totalCount: 3,
+  page: 1,
+  size: 20,
+  totalPages: 1,
+};
+
+/** テスト用スレッド詳細データ */
+const TEST_THREAD_DETAIL = {
+  threadId: 1,
+  title: "テストスレッド1",
+  createdByUsername: "テストユーザ",
+  createdAt: new Date(Date.now() - 86400000).toISOString(),
+  comments: [
+    { commentId: 1, content: "コメント1の内容\n改行あり", createdByUsername: "テストユーザ", createdAt: new Date(Date.now() - 3600000).toISOString() },
+    { commentId: 2, content: "コメント2の内容", createdByUsername: "テストユーザ2", createdAt: new Date(Date.now() - 7200000).toISOString() },
+  ],
+  totalComments: 2,
+  page: 1,
+  size: 10,
+  totalPages: 1,
+};
+
+/**
+ * スレッドAPIのモックルートを設定する
+ *
+ * @param page - Playwrightのページオブジェクト
+ */
+export async function setupThreadMockRoutes(
+  page: import("@playwright/test").Page,
+): Promise<void> {
+  // スレッド一覧APIモック
+  await page.route(
+    new RegExp(`${BACKEND_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/api/v1/community/[^/]+/threads(\\?.*)?$`),
+    async (route) => {
+      const request = route.request();
+      const url: string = request.url();
+
+      if (request.method() === "GET") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(TEST_THREAD_LIST),
+        });
+      } else if (request.method() === "POST") {
+        // スレッド作成API
+        await route.fulfill({
+          status: 201,
+          contentType: "application/json",
+          body: JSON.stringify({
+            ...TEST_THREAD_DETAIL,
+            threadId: 100,
+            title: "新規スレッド",
+          }),
+        });
+      } else {
+        await route.continue();
+      }
+    },
+  );
+
+  // スレッド詳細APIモック（コメント追加含む）
+  await page.route(
+    new RegExp(`${BACKEND_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/api/v1/community/[^/]+/threads/\\d+(/comments)?(\\?.*)?$`),
+    async (route) => {
+      const request = route.request();
+      const url: string = request.url();
+
+      if (request.method() === "GET") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(TEST_THREAD_DETAIL),
+        });
+      } else if (request.method() === "POST") {
+        // コメント追加API
+        await route.fulfill({
+          status: 201,
+          contentType: "application/json",
+          body: JSON.stringify({
+            commentId: 100,
+            content: "新規コメント",
+            createdByUsername: "テストユーザ",
+            createdAt: new Date().toISOString(),
+          }),
+        });
+      } else {
+        await route.continue();
+      }
+    },
+  );
+}
+
+export { BACKEND_URL, TEST_USER, TEST_CREDENTIALS, TEST_ARTISTS, TEST_COMMUNITY_DATA, TEST_THREAD_LIST, TEST_THREAD_DETAIL };

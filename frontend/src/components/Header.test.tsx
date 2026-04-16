@@ -1,12 +1,18 @@
 /**
  * 共通ヘッダーコンポーネントの単体テスト
  *
- * 未ログイン時・ログイン済み時の表示切替をテストする。
+ * 未ログイン時・ログイン済み時の表示切替、戻るボタンをテストする。
  */
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import Header from "@/components/Header";
 import { AuthProvider } from "@/contexts/AuthContext";
+
+/** next/navigationのモック */
+const mockBack = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), back: mockBack }),
+}));
 
 /**
  * AuthProviderでラップしてレンダリングするヘルパー関数
@@ -166,5 +172,34 @@ describe("Header", () => {
       },
     );
     expect(deleteCalls.length).toBe(1);
+  });
+
+  /**
+   * 【テスト対象】Header コンポーネント
+   * 【テストケース】戻るボタンの表示
+   * 【期待結果】戻るボタンが表示される
+   * 【ビジネス要件】共通ヘッダの戻るアイコン
+   */
+  it("戻るボタンが表示されること", () => {
+    renderWithAuth();
+
+    expect(screen.getByTestId("back-button")).toBeInTheDocument();
+  });
+
+  /**
+   * 【テスト対象】Header コンポーネント
+   * 【テストケース】戻るボタンクリック時
+   * 【期待結果】router.backが呼ばれる
+   * 【ビジネス要件】前ページへの遷移
+   */
+  it("戻るボタンクリックでrouter.backが呼ばれること", () => {
+    // history.lengthが2以上の場合は活性化する
+    Object.defineProperty(window.history, "length", { value: 3, writable: true });
+
+    renderWithAuth();
+
+    fireEvent.click(screen.getByTestId("back-button"));
+
+    expect(mockBack).toHaveBeenCalled();
   });
 });
