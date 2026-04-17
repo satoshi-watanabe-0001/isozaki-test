@@ -9,8 +9,8 @@
  */
 "use client";
 
-import { useState, useCallback, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useCallback, useEffect, type ReactNode } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import LoginModal from "@/components/LoginModal";
 
@@ -26,14 +26,19 @@ import LoginModal from "@/components/LoginModal";
 export default function Header(): ReactNode {
   const { user, isLoggedIn, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [canGoBack, setCanGoBack] = useState<boolean>(false);
 
   /**
    * ブラウザ履歴の有無を判定する
-   * window.history.lengthが2以上の場合、戻り先がある（初回アクセス時は1）
+   * パス変更のたびにwindow.history.lengthを再評価する
    */
-  const canGoBack: boolean =
-    typeof window !== "undefined" && window.history.length > 1;
+  useEffect(() => {
+    setCanGoBack(
+      typeof window !== "undefined" && window.history.length > 1
+    );
+  }, [pathname]);
 
   /**
    * ログインモーダルを開く

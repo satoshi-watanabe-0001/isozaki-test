@@ -12,6 +12,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 const mockBack = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), back: mockBack }),
+  usePathname: () => "/",
 }));
 
 /**
