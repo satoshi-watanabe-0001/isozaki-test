@@ -2,7 +2,9 @@
  * スレッドサービスクラス
  *
  * <p>スレッド機能のビジネスロジックを担当するサービス。
- * スレッド一覧・詳細取得、スレッド作成、コメント追加を提供する。</p>
+ * スレッド一覧・詳細取得、スレッド作成、コメント追加を提供する。
+ * スレッド一覧・コメント一覧取得時はDB JOINでユーザ名を取得し、
+ * 最新コメント情報はthreadsテーブルの非正規化カラムから取得する。</p>
  *
  * @since 1.3
  */
@@ -26,17 +28,15 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * スレッド機能のビジネスロジックを提供するサービス
  *
  * <p>スレッドリポジトリ、コメントリポジトリ、セッションサービスと連携して、
- * スレッド一覧・詳細・作成・コメント追加の処理を行う。</p>
+ * スレッド一覧・詳細・作成・コメント追加の処理を行う。
+ * 一覧・詳細取得時はJPQL JOINでユーザ名を取得し、N+1問題を回避する。</p>
  *
  * @since 1.3
  */
@@ -82,9 +82,9 @@ public class ThreadService {
     /**
      * 指定アーティストのスレッド一覧を取得する
      *
-     * <p>スレッドの最新コメント情報を含めて返却する。
-     * 最新コメント日時の降順でソートされる。
-     * N+1問題を回避するため、最新コメントとユーザ名を一括取得する。</p>
+     * <p>JPQL JOINでusersテーブルからユーザ名を取得し、
+     * 非正規化カラムから最新コメント情報を取得する。
+     * 最新コメント日時の降順でソートされる（SQLで実施）。</p>
      *
      * @param artistId アーティストID
      * @param page     ページ番号（1始まり）
@@ -102,46 +102,12 @@ public class ThreadService {
         long totalCount = threadRepository.countByArtistId(artistId);
         int totalPages = (int) Math.ceil((double) totalCount / clampedSize);
 
-        // ページ番号は内部的に0始まりに変換
-        List<ThreadEntity> threads = threadRepository.findByArtistId(
+        // JPQL JOINでスレッド一覧＋ユーザ名を取得（ソートはSQL側で実施）
+        List<Object[]> rows = threadRepository.findByArtistIdWithUsername(
                 artistId, page - 1, clampedSize);
 
-        if (threads.isEmpty()) {
-            return Optional.of(new ThreadListResponse(
-                    List.of(), totalCount, page, clampedSize, totalPages));
-        }
-
-        // N+1問題対策: スレッドIDリストから最新コメントを一括取得
-        List<UUID> threadIds = threads.stream()
-                .map(t -> t.threadId)
-                .toList();
-        Map<UUID, ThreadCommentEntity> latestComments =
-                threadCommentRepository.findLatestByThreadIds(threadIds);
-
-        // N+1問題対策: 全関連ユーザIDからユーザ名を一括取得
-        List<UUID> allUserIds = Stream.concat(
-                threads.stream().map(t -> t.createdBy),
-                latestComments.values().stream().map(c -> c.createdBy)
-        ).distinct().collect(Collectors.toList());
-        Map<UUID, String> usernameMap = userRepository.findUsernamesByUserIds(allUserIds);
-
-        List<ThreadListItemResponse> items = threads.stream()
-                .map(entity -> toThreadListItem(entity, latestComments, usernameMap))
-                .sorted((a, b) -> {
-                    // 最新コメント日時の降順ソート
-                    Instant aTime = a.latestCommentAt();
-                    Instant bTime = b.latestCommentAt();
-                    if (aTime == null && bTime == null) {
-                        return 0;
-                    }
-                    if (aTime == null) {
-                        return 1;
-                    }
-                    if (bTime == null) {
-                        return -1;
-                    }
-                    return bTime.compareTo(aTime);
-                })
+        List<ThreadListItemResponse> items = rows.stream()
+                .map(this::toThreadListItem)
                 .toList();
 
         return Optional.of(new ThreadListResponse(
@@ -150,6 +116,8 @@ public class ThreadService {
 
     /**
      * 指定スレッドの詳細情報を取得する
+     *
+     * <p>JPQL JOINでスレッド作成者・コメント作成者のユーザ名を取得する。</p>
      *
      * @param artistId アーティストID
      * @param threadId スレッドID
@@ -161,28 +129,30 @@ public class ThreadService {
             String artistId, UUID threadId, int page, int size) {
         int clampedSize = clampSize(size);
 
-        ThreadEntity thread = threadRepository.findById(threadId);
-        if (thread == null || !thread.artistId.equals(artistId)) {
+        // JPQL JOINでスレッド＋ユーザ名を取得（アーティスト整合チェック含む）
+        Object[] threadRow = threadRepository.findByIdAndArtistIdWithUsername(
+                threadId, artistId);
+        if (threadRow == null) {
             return Optional.empty();
         }
 
         long totalComments = threadCommentRepository.countByThreadId(threadId);
         int totalPages = (int) Math.ceil((double) totalComments / clampedSize);
 
-        List<ThreadCommentEntity> comments =
-                threadCommentRepository.findByThreadId(threadId, page - 1, clampedSize);
+        // JPQL JOINでコメント一覧＋ユーザ名を取得
+        List<Object[]> commentRows =
+                threadCommentRepository.findByThreadIdWithUsername(
+                        threadId, page - 1, clampedSize);
 
-        List<ThreadCommentResponse> commentResponses = comments.stream()
+        List<ThreadCommentResponse> commentResponses = commentRows.stream()
                 .map(this::toCommentResponse)
                 .toList();
 
-        String creatorUsername = resolveUsername(thread.createdBy);
-
         return Optional.of(new ThreadDetailResponse(
-                thread.threadId.toString(),
-                thread.title,
-                creatorUsername,
-                thread.createdAt,
+                ((UUID) threadRow[0]).toString(),
+                (String) threadRow[1],
+                (String) threadRow[2],
+                (Instant) threadRow[3],
                 commentResponses,
                 totalComments,
                 page,
@@ -196,7 +166,8 @@ public class ThreadService {
      *
      * <p>セッションIDからユーザを特定し、
      * スレッドと初回コメントを同時に作成する。
-     * スレッドIDとコメントIDはUUIDv7で生成する。</p>
+     * スレッドIDとコメントIDはUUIDv7で生成する。
+     * 非正規化カラム（latestCommentContent, latestCommentAt）も同時に設定する。</p>
      *
      * @param artistId アーティストID
      * @param request  スレッド作成リクエスト
@@ -219,14 +190,17 @@ public class ThreadService {
 
         UUID userUuid = UUID.fromString(userId);
         Instant now = Instant.now();
+        String cleanTitle = request.title().replaceAll("[\\r\\n]", "");
 
-        // スレッド作成（UUIDv7、タイトルから改行を除去）
+        // スレッド作成（UUIDv7、非正規化カラム含む）
         ThreadEntity thread = new ThreadEntity();
         thread.threadId = UUID.fromString(uuidService.generateUuidV7());
         thread.artistId = artistId;
-        thread.title = request.title().replaceAll("[\\r\\n]", "");
+        thread.title = cleanTitle;
         thread.createdBy = userUuid;
         thread.createdAt = now;
+        thread.latestCommentContent = request.comment();
+        thread.latestCommentAt = now;
         threadRepository.persist(thread);
 
         // 初回コメント作成（UUIDv7）
@@ -238,15 +212,32 @@ public class ThreadService {
         comment.createdAt = now;
         threadCommentRepository.persist(comment);
 
-        // 作成後の詳細を返却
-        return getThreadDetail(artistId, thread.threadId, 1, 10);
+        // ユーザ名を取得してレスポンスを直接構築
+        String username = resolveUsername(userUuid);
+
+        ThreadCommentResponse commentResponse = new ThreadCommentResponse(
+                comment.commentId.toString(),
+                comment.content,
+                username,
+                now
+        );
+
+        return Optional.of(new ThreadDetailResponse(
+                thread.threadId.toString(),
+                cleanTitle,
+                username,
+                now,
+                List.of(commentResponse),
+                1L, 1, 10, 1
+        ));
     }
 
     /**
      * スレッドにコメントを追加する
      *
      * <p>セッションIDからユーザを特定し、指定スレッドにコメントを追加する。
-     * コメントIDはUUIDv7で生成する。</p>
+     * コメントIDはUUIDv7で生成する。
+     * 非正規化カラム（latestCommentContent, latestCommentAt）を同時に更新する。</p>
      *
      * @param artistId アーティストID
      * @param threadId スレッドID
@@ -269,71 +260,70 @@ public class ThreadService {
         }
 
         UUID userUuid = UUID.fromString(userId);
+        Instant now = Instant.now();
 
+        // コメント作成（UUIDv7）
         ThreadCommentEntity comment = new ThreadCommentEntity();
         comment.commentId = UUID.fromString(uuidService.generateUuidV7());
         comment.threadId = threadId;
         comment.content = request.content();
         comment.createdBy = userUuid;
-        comment.createdAt = Instant.now();
+        comment.createdAt = now;
         threadCommentRepository.persist(comment);
 
-        return Optional.of(toCommentResponse(comment));
+        // 非正規化: スレッドの最新コメント情報を更新
+        thread.latestCommentContent = request.content();
+        thread.latestCommentAt = now;
+        threadRepository.persist(thread);
+
+        // ユーザ名を取得してレスポンスを構築
+        String username = resolveUsername(userUuid);
+
+        return Optional.of(new ThreadCommentResponse(
+                comment.commentId.toString(),
+                comment.content,
+                username,
+                now
+        ));
     }
 
     /**
-     * スレッドエンティティをスレッド一覧アイテムDTOに変換する（バッチ版）
+     * JPQL JOIN結果の行をスレッド一覧アイテムDTOに変換する
      *
-     * <p>事前に取得済みの最新コメントMap・ユーザ名Mapを参照して変換する。</p>
-     *
-     * @param entity          スレッドエンティティ
-     * @param latestComments  スレッドID→最新コメントのMap
-     * @param usernameMap     ユーザID→ユーザ名のMap
+     * @param row Object[] [threadId, title, username, latestCommentContent,
+     *            latestCommentAt, createdAt]
      * @return スレッド一覧アイテムDTO
      */
-    private ThreadListItemResponse toThreadListItem(
-            ThreadEntity entity,
-            Map<UUID, ThreadCommentEntity> latestComments,
-            Map<UUID, String> usernameMap) {
-        String creatorUsername = usernameMap.getOrDefault(
-                entity.createdBy, "不明なユーザ");
-
-        ThreadCommentEntity latestComment = latestComments.get(entity.threadId);
-
-        String latestCommentContent = latestComment != null
-                ? latestComment.content : null;
-        Instant latestCommentAt = latestComment != null
-                ? latestComment.createdAt : entity.createdAt;
-
+    private ThreadListItemResponse toThreadListItem(Object[] row) {
         return new ThreadListItemResponse(
-                entity.threadId.toString(),
-                entity.title,
-                creatorUsername,
-                latestCommentContent,
-                latestCommentAt
+                ((UUID) row[0]).toString(),
+                (String) row[1],
+                (String) row[2],
+                (String) row[3],
+                row[4] != null ? (Instant) row[4] : (Instant) row[5]
         );
     }
 
     /**
-     * コメントエンティティをコメントレスポンスDTOに変換する
+     * JPQL JOIN結果の行をコメントレスポンスDTOに変換する
      *
-     * @param entity コメントエンティティ
+     * @param row Object[] [commentId, content, username, createdAt]
      * @return コメントレスポンスDTO
      */
-    private ThreadCommentResponse toCommentResponse(ThreadCommentEntity entity) {
-        String username = resolveUsername(entity.createdBy);
+    private ThreadCommentResponse toCommentResponse(Object[] row) {
         return new ThreadCommentResponse(
-                entity.commentId.toString(),
-                entity.content,
-                username,
-                entity.createdAt
+                ((UUID) row[0]).toString(),
+                (String) row[1],
+                (String) row[2],
+                (Instant) row[3]
         );
     }
 
     /**
-     * ユーザIDからユーザ名を解決する
+     * ユーザIDからユーザ名を解決する（単一ユーザ用）
      *
-     * <p>ユーザが見つからない場合は「不明なユーザ」を返却する。</p>
+     * <p>書き込み操作（スレッド作成・コメント追加）後のレスポンス構築に使用する。
+     * ユーザが見つからない場合は「不明なユーザ」を返却する。</p>
      *
      * @param userId ユーザID
      * @return ユーザ名

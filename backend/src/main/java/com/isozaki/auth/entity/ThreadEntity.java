@@ -59,4 +59,16 @@ public class ThreadEntity extends PanacheEntityBase {
      */
     @Column(name = "created_at", nullable = false)
     public Instant createdAt;
+
+    /**
+     * 最新コメント内容（非正規化、コメント追加時に更新）
+     */
+    @Column(name = "latest_comment_content", length = 200)
+    public String latestCommentContent;
+
+    /**
+     * 最新コメント日時（非正規化、コメント追加時に更新）
+     */
+    @Column(name = "latest_comment_at")
+    public Instant latestCommentAt;
 }

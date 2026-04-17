@@ -2,7 +2,8 @@
  * スレッドコメントリポジトリクラス
  *
  * <p>thread_commentsテーブルへのデータアクセスを提供するリポジトリ。
- * スレッドIDによるコメント検索をサポートする。</p>
+ * スレッドIDによるコメント検索をサポートする。
+ * ユーザ名はLEFT JOINで取得し、N+1問題を回避する。</p>
  *
  * @since 1.3
  */
@@ -11,18 +12,15 @@ package com.isozaki.auth.repository;
 
 import com.isozaki.auth.entity.ThreadCommentEntity;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
-import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * スレッドコメントデータアクセスリポジトリ
  *
- * <p>スレッドに紐づくコメントの検索・件数取得・最新コメント取得を行う。</p>
+ * <p>スレッドに紐づくコメントの検索・件数取得を行う。
+ * コメント一覧取得時はusersテーブルとLEFT JOINし、ユーザ名を同時に取得する。</p>
  *
  * @since 1.3
  */
@@ -30,17 +28,29 @@ import java.util.stream.Collectors;
 public class ThreadCommentRepository implements PanacheRepositoryBase<ThreadCommentEntity, UUID> {
 
     /**
-     * 指定スレッドのコメント一覧を取得する（作成日時降順、ページング）
+     * 指定スレッドのコメント一覧をユーザ名付きで取得する（JPQL JOIN）
+     *
+     * <p>usersテーブルとLEFT JOINし、コメント作成者のユーザ名を同時に取得する。
+     * 作成日時の降順でソートし、ページングを適用する。</p>
      *
      * @param threadId スレッドID
      * @param page     ページ番号（0始まり）
      * @param size     1ページあたりの件数
-     * @return コメントエンティティのリスト
+     * @return Object[]のリスト [commentId(UUID), content(String), username(String),
+     *         createdAt(Instant)]
      */
-    public List<ThreadCommentEntity> findByThreadId(UUID threadId, int page, int size) {
-        return find("threadId", Sort.by("createdAt").descending(), threadId)
-                .page(page, size)
-                .list();
+    @SuppressWarnings("unchecked")
+    public List<Object[]> findByThreadIdWithUsername(UUID threadId, int page, int size) {
+        return getEntityManager().createQuery(
+                "SELECT c.commentId, c.content, COALESCE(u.username, '不明なユーザ'), c.createdAt "
+                + "FROM ThreadCommentEntity c "
+                + "LEFT JOIN UserEntity u ON c.createdBy = u.userId "
+                + "WHERE c.threadId = :threadId "
+                + "ORDER BY c.createdAt DESC")
+                .setParameter("threadId", threadId)
+                .setFirstResult(page * size)
+                .setMaxResults(size)
+                .getResultList();
     }
 
     /**
@@ -51,40 +61,5 @@ public class ThreadCommentRepository implements PanacheRepositoryBase<ThreadComm
      */
     public long countByThreadId(UUID threadId) {
         return count("threadId", threadId);
-    }
-
-    /**
-     * 指定スレッドの最新コメントを取得する
-     *
-     * @param threadId スレッドID
-     * @return 最新コメント（存在しない場合はOptional.empty）
-     */
-    public Optional<ThreadCommentEntity> findLatestByThreadId(UUID threadId) {
-        return find("threadId", Sort.by("createdAt").descending(), threadId)
-                .firstResultOptional();
-    }
-
-    /**
-     * 複数スレッドの最新コメントを一括取得する（N+1問題対策）
-     *
-     * <p>各スレッドIDに対して最新のコメント1件をまとめて取得し、
-     * スレッドID→最新コメントのMapとして返却する。</p>
-     *
-     * @param threadIds スレッドIDのリスト
-     * @return スレッドIDをキー、最新コメントを値とするMap
-     */
-    public Map<UUID, ThreadCommentEntity> findLatestByThreadIds(List<UUID> threadIds) {
-        if (threadIds.isEmpty()) {
-            return Map.of();
-        }
-        // 対象スレッドIDに紐づくコメントを作成日時降順で全件取得し、
-        // スレッドIDごとに最新の1件だけを抽出する
-        List<ThreadCommentEntity> allComments = list(
-                "threadId in ?1 order by createdAt desc", threadIds);
-        return allComments.stream()
-                .collect(Collectors.toMap(
-                        c -> c.threadId,
-                        c -> c,
-                        (existing, replacement) -> existing));
     }
 }

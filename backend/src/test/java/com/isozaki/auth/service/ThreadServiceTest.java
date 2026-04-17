@@ -2,7 +2,8 @@
  * ThreadServiceの単体テスト
  *
  * <p>スレッド機能のビジネスロジックをテストする。
- * 各リポジトリとSessionServiceはモックを使用する。</p>
+ * 各リポジトリとSessionServiceはモックを使用する。
+ * スレッド一覧・コメント一覧はJPQL JOIN結果（Object[]）をモックで再現する。</p>
  *
  * @since 1.3
  */
@@ -31,7 +32,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -41,7 +41,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -85,8 +84,6 @@ class ThreadServiceTest {
             UUID.fromString("01970000-2000-7000-8000-000000000001");
     private static final UUID COMMENT_UUID_2 =
             UUID.fromString("01970000-2000-7000-8000-000000000002");
-    private static final UUID COMMENT_UUID_10 =
-            UUID.fromString("01970000-2000-7000-8000-00000000000a");
     private static final UUID COMMENT_UUID_50 =
             UUID.fromString("01970000-2000-7000-8000-000000000050");
     private static final String VALID_SESSION = "valid-session";
@@ -119,21 +116,6 @@ class ThreadServiceTest {
     }
 
     /**
-     * テスト用のThreadCommentEntityを生成するヘルパー
-     */
-    private ThreadCommentEntity createCommentEntity(
-            UUID commentId, UUID threadId, String content,
-            UUID createdBy, Instant createdAt) {
-        ThreadCommentEntity entity = new ThreadCommentEntity();
-        entity.commentId = commentId;
-        entity.threadId = threadId;
-        entity.content = content;
-        entity.createdBy = createdBy;
-        entity.createdAt = createdAt;
-        return entity;
-    }
-
-    /**
      * テスト用のUserEntityを生成するヘルパー
      */
     private UserEntity createUserEntity(UUID userId, String username) {
@@ -145,6 +127,35 @@ class ThreadServiceTest {
         user.createdAt = Instant.now();
         user.updatedAt = Instant.now();
         return user;
+    }
+
+    /**
+     * スレッド一覧JOIN結果のObject[]行を生成するヘルパー
+     * [threadId, title, username, latestCommentContent, latestCommentAt, createdAt]
+     */
+    private Object[] createThreadListRow(
+            UUID threadId, String title, String username,
+            String latestComment, Instant latestCommentAt, Instant createdAt) {
+        return new Object[]{threadId, title, username,
+                latestComment, latestCommentAt, createdAt};
+    }
+
+    /**
+     * スレッド詳細JOIN結果のObject[]行を生成するヘルパー
+     * [threadId, title, username, createdAt]
+     */
+    private Object[] createThreadDetailRow(
+            UUID threadId, String title, String username, Instant createdAt) {
+        return new Object[]{threadId, title, username, createdAt};
+    }
+
+    /**
+     * コメントJOIN結果のObject[]行を生成するヘルパー
+     * [commentId, content, username, createdAt]
+     */
+    private Object[] createCommentRow(
+            UUID commentId, String content, String username, Instant createdAt) {
+        return new Object[]{commentId, content, username, createdAt};
     }
 
     // ========== getThreadList テスト ==========
@@ -171,10 +182,10 @@ class ThreadServiceTest {
      * 【テスト対象】ThreadService#getThreadList
      * 【テストケース】アーティスト存在時、スレッド一覧が返却される
      * 【期待結果】スレッド一覧がページング情報と共に返却される
-     * 【ビジネス要件】スレッド一覧取得 - 正常系（N+1問題対策: バッチ取得）
+     * 【ビジネス要件】スレッド一覧取得 - 正常系（JPQL JOIN）
      */
     @Test
-    @DisplayName("スレッド一覧: 正常系、一覧が返される（バッチ取得）")
+    @DisplayName("スレッド一覧: 正常系、JPQL JOINで一覧が返される")
     void shouldReturnThreadListWhenArtistExists() {
         Instant now = Instant.now();
         Instant earlier = now.minusSeconds(3600);
@@ -184,24 +195,15 @@ class ThreadServiceTest {
         when(threadRepository.countByArtistId("aimyon"))
                 .thenReturn(2L);
 
-        ThreadEntity thread1 = createThreadEntity(
-                THREAD_UUID_1, "aimyon", "スレッド1", USER_UUID_1, earlier);
-        ThreadEntity thread2 = createThreadEntity(
-                THREAD_UUID_2, "aimyon", "スレッド2", USER_UUID_2, now);
-        when(threadRepository.findByArtistId("aimyon", 0, 20))
-                .thenReturn(List.of(thread1, thread2));
-
-        // 最新コメントの一括取得モック（N+1問題対策）
-        ThreadCommentEntity latestComment1 = createCommentEntity(
-                COMMENT_UUID_10, THREAD_UUID_1, "最新コメント1", USER_UUID_1, now);
-        when(threadCommentRepository.findLatestByThreadIds(anyList()))
-                .thenReturn(Map.of(THREAD_UUID_1, latestComment1));
-
-        // ユーザ名の一括取得モック（N+1問題対策）
-        when(userRepository.findUsernamesByUserIds(anyList()))
-                .thenReturn(Map.of(
-                        USER_UUID_1, "テストユーザ1",
-                        USER_UUID_2, "テストユーザ2"));
+        // JPQL JOIN結果のモック（ソート済み: latestCommentAtの降順）
+        Object[] row1 = createThreadListRow(
+                THREAD_UUID_1, "スレッド1", "テストユーザ1",
+                "最新コメント1", now, earlier);
+        Object[] row2 = createThreadListRow(
+                THREAD_UUID_2, "スレッド2", "テストユーザ2",
+                null, null, now);
+        when(threadRepository.findByArtistIdWithUsername("aimyon", 0, 20))
+                .thenReturn(List.of(row1, row2));
 
         Optional<ThreadListResponse> result =
                 threadService.getThreadList("aimyon", 1, 20);
@@ -212,7 +214,7 @@ class ThreadServiceTest {
         assertEquals(1, response.page());
         assertEquals(20, response.size());
         assertEquals(2, response.threads().size());
-        // 降順ソート確認: スレッド1（コメントあり）が先
+        // JPQL JOINの結果順（latestCommentAt降順）で返却
         assertEquals("スレッド1", response.threads().get(0).title());
         assertEquals(
                 "テストユーザ1",
@@ -239,7 +241,7 @@ class ThreadServiceTest {
                 .thenReturn(new ArtistEntity());
         when(threadRepository.countByArtistId("aimyon"))
                 .thenReturn(0L);
-        when(threadRepository.findByArtistId("aimyon", 0, 20))
+        when(threadRepository.findByArtistIdWithUsername("aimyon", 0, 20))
                 .thenReturn(List.of());
 
         Optional<ThreadListResponse> result =
@@ -263,7 +265,7 @@ class ThreadServiceTest {
                 .thenReturn(new ArtistEntity());
         when(threadRepository.countByArtistId("aimyon"))
                 .thenReturn(0L);
-        when(threadRepository.findByArtistId("aimyon", 0, 100))
+        when(threadRepository.findByArtistIdWithUsername("aimyon", 0, 100))
                 .thenReturn(List.of());
 
         Optional<ThreadListResponse> result =
@@ -271,7 +273,7 @@ class ThreadServiceTest {
 
         assertTrue(result.isPresent());
         assertEquals(100, result.get().size());
-        verify(threadRepository).findByArtistId("aimyon", 0, 100);
+        verify(threadRepository).findByArtistIdWithUsername("aimyon", 0, 100);
     }
 
     /**
@@ -287,7 +289,7 @@ class ThreadServiceTest {
                 .thenReturn(new ArtistEntity());
         when(threadRepository.countByArtistId("aimyon"))
                 .thenReturn(0L);
-        when(threadRepository.findByArtistId("aimyon", 0, 20))
+        when(threadRepository.findByArtistIdWithUsername("aimyon", 0, 20))
                 .thenReturn(List.of());
 
         Optional<ThreadListResponse> result =
@@ -295,7 +297,7 @@ class ThreadServiceTest {
 
         assertTrue(result.isPresent());
         assertEquals(20, result.get().size());
-        verify(threadRepository).findByArtistId("aimyon", 0, 20);
+        verify(threadRepository).findByArtistIdWithUsername("aimyon", 0, 20);
     }
 
     // ========== getThreadDetail テスト ==========
@@ -311,7 +313,8 @@ class ThreadServiceTest {
     void shouldReturnEmptyWhenThreadNotFound() {
         UUID unknownThread = UUID.fromString(
                 "01970000-1000-7000-8000-ffffffffffff");
-        when(threadRepository.findById(unknownThread)).thenReturn(null);
+        when(threadRepository.findByIdAndArtistIdWithUsername(
+                unknownThread, "aimyon")).thenReturn(null);
 
         Optional<ThreadDetailResponse> result =
                 threadService.getThreadDetail(
@@ -329,11 +332,10 @@ class ThreadServiceTest {
     @Test
     @DisplayName("スレッド詳細: アーティストID不一致時、emptyが返される")
     void shouldReturnEmptyWhenArtistMismatch() {
-        ThreadEntity thread = createThreadEntity(
-                THREAD_UUID_1, "aimyon", "テスト",
-                USER_UUID_1, Instant.now());
-        when(threadRepository.findById(THREAD_UUID_1))
-                .thenReturn(thread);
+        // JPQL JOINのWHERE句でartist_idも条件に含むため、
+        // アーティスト不一致時はnullが返る
+        when(threadRepository.findByIdAndArtistIdWithUsername(
+                THREAD_UUID_1, "different-artist")).thenReturn(null);
 
         Optional<ThreadDetailResponse> result =
                 threadService.getThreadDetail(
@@ -346,35 +348,31 @@ class ThreadServiceTest {
      * 【テスト対象】ThreadService#getThreadDetail
      * 【テストケース】正常系、スレッド詳細が返却される
      * 【期待結果】スレッド詳細とコメントが返却される
-     * 【ビジネス要件】スレッド詳細取得 - 正常系
+     * 【ビジネス要件】スレッド詳細取得 - 正常系（JPQL JOIN）
      */
     @Test
-    @DisplayName("スレッド詳細: 正常系、詳細が返される")
+    @DisplayName("スレッド詳細: 正常系、JPQL JOINで詳細が返される")
     void shouldReturnThreadDetailWhenExists() {
         Instant now = Instant.now();
-        ThreadEntity thread = createThreadEntity(
-                THREAD_UUID_1, "aimyon", "テストスレッド",
-                USER_UUID_1, now);
-        when(threadRepository.findById(THREAD_UUID_1))
-                .thenReturn(thread);
 
-        ThreadCommentEntity comment1 = createCommentEntity(
-                COMMENT_UUID_1, THREAD_UUID_1, "コメント1",
-                USER_UUID_1, now);
-        ThreadCommentEntity comment2 = createCommentEntity(
-                COMMENT_UUID_2, THREAD_UUID_1, "コメント2\n改行あり",
-                USER_UUID_2, now.minusSeconds(60));
+        // JPQL JOINでスレッド＋ユーザ名を取得
+        Object[] threadRow = createThreadDetailRow(
+                THREAD_UUID_1, "テストスレッド", "ユーザ1", now);
+        when(threadRepository.findByIdAndArtistIdWithUsername(
+                THREAD_UUID_1, "aimyon")).thenReturn(threadRow);
+
         when(threadCommentRepository.countByThreadId(THREAD_UUID_1))
                 .thenReturn(2L);
-        when(threadCommentRepository.findByThreadId(THREAD_UUID_1, 0, 10))
-                .thenReturn(List.of(comment1, comment2));
 
-        when(userRepository.findByUserId(USER_UUID_1))
-                .thenReturn(Optional.of(
-                        createUserEntity(USER_UUID_1, "ユーザ1")));
-        when(userRepository.findByUserId(USER_UUID_2))
-                .thenReturn(Optional.of(
-                        createUserEntity(USER_UUID_2, "ユーザ2")));
+        // JPQL JOINでコメント＋ユーザ名を取得
+        Object[] commentRow1 = createCommentRow(
+                COMMENT_UUID_1, "コメント1", "ユーザ1", now);
+        Object[] commentRow2 = createCommentRow(
+                COMMENT_UUID_2, "コメント2\n改行あり", "ユーザ2",
+                now.minusSeconds(60));
+        when(threadCommentRepository.findByThreadIdWithUsername(
+                THREAD_UUID_1, 0, 10))
+                .thenReturn(List.of(commentRow1, commentRow2));
 
         Optional<ThreadDetailResponse> result =
                 threadService.getThreadDetail(
@@ -399,27 +397,26 @@ class ThreadServiceTest {
 
     /**
      * 【テスト対象】ThreadService#getThreadDetail
-     * 【テストケース】ユーザが見つからない場合
+     * 【テストケース】ユーザが見つからない場合（LEFT JOIN）
      * 【期待結果】「不明なユーザ」として返却される
-     * 【ビジネス要件】スレッド詳細取得 - ユーザ不在
+     * 【ビジネス要件】スレッド詳細取得 - ユーザ不在（LEFT JOIN COALESCE）
      */
     @Test
     @DisplayName("スレッド詳細: ユーザ不在時、不明なユーザと表示される")
     void shouldReturnUnknownUsernameWhenUserNotFound() {
         Instant now = Instant.now();
-        ThreadEntity thread = createThreadEntity(
-                THREAD_UUID_1, "aimyon", "テスト", USER_UUID_1, now);
-        when(threadRepository.findById(THREAD_UUID_1))
-                .thenReturn(thread);
+
+        // LEFT JOIN + COALESCEによりユーザ不在時は「不明なユーザ」が返る
+        Object[] threadRow = createThreadDetailRow(
+                THREAD_UUID_1, "テスト", "不明なユーザ", now);
+        when(threadRepository.findByIdAndArtistIdWithUsername(
+                THREAD_UUID_1, "aimyon")).thenReturn(threadRow);
 
         when(threadCommentRepository.countByThreadId(THREAD_UUID_1))
                 .thenReturn(0L);
-        when(threadCommentRepository.findByThreadId(THREAD_UUID_1, 0, 10))
+        when(threadCommentRepository.findByThreadIdWithUsername(
+                THREAD_UUID_1, 0, 10))
                 .thenReturn(List.of());
-
-        // ユーザが見つからないケース
-        when(userRepository.findByUserId(USER_UUID_1))
-                .thenReturn(Optional.empty());
 
         Optional<ThreadDetailResponse> result =
                 threadService.getThreadDetail(
@@ -478,12 +475,12 @@ class ThreadServiceTest {
 
     /**
      * 【テスト対象】ThreadService#createThread
-     * 【テストケース】正常系、スレッドが作成される（UUIDv7生成）
-     * 【期待結果】スレッドとコメントがpersistされる
+     * 【テストケース】正常系、スレッドが作成される（UUIDv7生成、非正規化カラム設定）
+     * 【期待結果】スレッドとコメントがpersistされ、非正規化カラムが設定される
      * 【ビジネス要件】スレッド作成 - 正常系
      */
     @Test
-    @DisplayName("スレッド作成: 正常系、UUIDv7でpersistが呼ばれる")
+    @DisplayName("スレッド作成: 正常系、UUIDv7でpersistされ非正規化カラムが設定される")
     void shouldCreateThreadSuccessfully() {
         UUID newThreadUuid = UUID.fromString(
                 "01970000-1000-7000-8000-000000000100");
@@ -498,22 +495,7 @@ class ThreadServiceTest {
                 .thenReturn(newThreadUuid.toString())
                 .thenReturn(newCommentUuid.toString());
 
-        // 作成後のgetThreadDetail用モック
-        ThreadEntity savedThread = createThreadEntity(
-                newThreadUuid, "aimyon", "新規スレッド",
-                USER_UUID_1, Instant.now());
-        when(threadRepository.findById(newThreadUuid))
-                .thenReturn(savedThread);
-        when(threadCommentRepository.countByThreadId(newThreadUuid))
-                .thenReturn(1L);
-
-        ThreadCommentEntity savedComment = createCommentEntity(
-                newCommentUuid, newThreadUuid, "初回コメント",
-                USER_UUID_1, Instant.now());
-        when(threadCommentRepository.findByThreadId(
-                newThreadUuid, 0, 10))
-                .thenReturn(List.of(savedComment));
-
+        // ユーザ名解決用モック
         when(userRepository.findByUserId(USER_UUID_1))
                 .thenReturn(Optional.of(
                         createUserEntity(USER_UUID_1, "テストユーザ")));
@@ -530,6 +512,10 @@ class ThreadServiceTest {
         assertEquals(newThreadUuid.toString(),
                 result.get().threadId());
         assertEquals("新規スレッド", result.get().title());
+        assertEquals("テストユーザ", result.get().createdByUsername());
+        assertEquals(1, result.get().comments().size());
+        assertEquals("初回コメント",
+                result.get().comments().get(0).content());
         verify(threadRepository).persist(any(ThreadEntity.class));
         verify(threadCommentRepository)
                 .persist(any(ThreadCommentEntity.class));
@@ -564,22 +550,13 @@ class ThreadServiceTest {
             assertFalse(entity.title.contains("\n"));
             assertFalse(entity.title.contains("\r"));
             assertEquals("テスト改行なし", entity.title);
+            // 非正規化カラムが設定されていることを確認
+            assertNotNull(entity.latestCommentContent);
+            assertNotNull(entity.latestCommentAt);
             return null;
         }).when(threadRepository).persist(any(ThreadEntity.class));
 
-        // getThreadDetail用モック（作成後の取得）
-        ThreadEntity savedThread = createThreadEntity(
-                newThreadUuid, "aimyon", "テスト改行なし",
-                USER_UUID_1, Instant.now());
-        when(threadRepository.findById(newThreadUuid))
-                .thenReturn(savedThread);
-        when(threadCommentRepository.countByThreadId(newThreadUuid))
-                .thenReturn(1L);
-        when(threadCommentRepository.findByThreadId(
-                newThreadUuid, 0, 10))
-                .thenReturn(List.of(createCommentEntity(
-                        newCommentUuid, newThreadUuid, "コメント",
-                        USER_UUID_1, Instant.now())));
+        // ユーザ名解決用モック
         when(userRepository.findByUserId(USER_UUID_1))
                 .thenReturn(Optional.of(
                         createUserEntity(USER_UUID_1, "ユーザ")));
@@ -591,6 +568,50 @@ class ThreadServiceTest {
 
         threadService.createThread("aimyon", request);
 
+        verify(threadRepository).persist(any(ThreadEntity.class));
+    }
+
+    /**
+     * 【テスト対象】ThreadService#createThread
+     * 【テストケース】非正規化カラムが初回コメントで設定される
+     * 【期待結果】latestCommentContent/latestCommentAtがpersistされる
+     * 【ビジネス要件】スレッド作成 - 非正規化カラム設定
+     */
+    @Test
+    @DisplayName("スレッド作成: 非正規化カラムが初回コメントで設定される")
+    void shouldSetDenormalizedColumnsOnCreate() {
+        UUID newThreadUuid = UUID.fromString(
+                "01970000-1000-7000-8000-000000000102");
+        UUID newCommentUuid = UUID.fromString(
+                "01970000-2000-7000-8000-000000000102");
+
+        when(artistRepository.findById("aimyon"))
+                .thenReturn(new ArtistEntity());
+        when(sessionService.getUserIdBySession(VALID_SESSION))
+                .thenReturn(USER_UUID_1.toString());
+        when(uuidService.generateUuidV7())
+                .thenReturn(newThreadUuid.toString())
+                .thenReturn(newCommentUuid.toString());
+
+        doAnswer(invocation -> {
+            ThreadEntity entity = invocation.getArgument(0);
+            assertEquals("テストコメント", entity.latestCommentContent);
+            assertNotNull(entity.latestCommentAt);
+            return null;
+        }).when(threadRepository).persist(any(ThreadEntity.class));
+
+        when(userRepository.findByUserId(USER_UUID_1))
+                .thenReturn(Optional.of(
+                        createUserEntity(USER_UUID_1, "ユーザ")));
+
+        CreateThreadRequest request =
+                new CreateThreadRequest(
+                        "テスト", "テストコメント", VALID_SESSION);
+
+        Optional<ThreadDetailResponse> result =
+                threadService.createThread("aimyon", request);
+
+        assertTrue(result.isPresent());
         verify(threadRepository).persist(any(ThreadEntity.class));
     }
 
@@ -674,12 +695,12 @@ class ThreadServiceTest {
 
     /**
      * 【テスト対象】ThreadService#addComment
-     * 【テストケース】正常系、コメントが追加される（UUIDv7生成）
-     * 【期待結果】コメントがpersistされレスポンスが返却される
-     * 【ビジネス要件】コメント追加 - 正常系
+     * 【テストケース】正常系、コメントが追加され非正規化カラムが更新される
+     * 【期待結果】コメントがpersistされ、スレッドの非正規化カラムが更新される
+     * 【ビジネス要件】コメント追加 - 正常系（非正規化更新）
      */
     @Test
-    @DisplayName("コメント追加: 正常系、UUIDv7でコメントが追加される")
+    @DisplayName("コメント追加: 正常系、非正規化カラムが更新される")
     void shouldAddCommentSuccessfully() {
         ThreadEntity thread = createThreadEntity(
                 THREAD_UUID_1, "aimyon", "テスト",
@@ -711,18 +732,24 @@ class ThreadServiceTest {
         // コメントIDがUUID文字列で返却される
         assertEquals(COMMENT_UUID_50.toString(),
                 result.get().commentId());
+        // コメントがpersistされる
         verify(threadCommentRepository)
                 .persist(any(ThreadCommentEntity.class));
+        // 非正規化カラムが更新される（threadRepository.persistが呼ばれる）
+        verify(threadRepository).persist(any(ThreadEntity.class));
+        // スレッドの非正規化カラムが更新されていることを確認
+        assertEquals("新しいコメント", thread.latestCommentContent);
+        assertNotNull(thread.latestCommentAt);
     }
 
     /**
      * 【テスト対象】ThreadService#getThreadList
      * 【テストケース】コメントなしスレッドのソート順
-     * 【期待結果】コメントなしスレッドは末尾にソートされる
-     * 【ビジネス要件】スレッド一覧 - ソート順
+     * 【期待結果】SQL側でCOALESCE(latestCommentAt, createdAt)降順ソート済み
+     * 【ビジネス要件】スレッド一覧 - ソート順（SQL実施）
      */
     @Test
-    @DisplayName("スレッド一覧: コメントなしスレッドが末尾にソートされる")
+    @DisplayName("スレッド一覧: コメントなしスレッドのソートがSQL側で実施される")
     void shouldSortThreadsWithNoCommentsLast() {
         Instant now = Instant.now();
         Instant earlier = now.minusSeconds(7200);
@@ -732,24 +759,16 @@ class ThreadServiceTest {
         when(threadRepository.countByArtistId("aimyon"))
                 .thenReturn(2L);
 
-        // スレッド1: コメントなし、スレッド2: コメントあり
-        ThreadEntity thread1 = createThreadEntity(
-                THREAD_UUID_1, "aimyon", "コメントなし",
-                USER_UUID_1, earlier);
-        ThreadEntity thread2 = createThreadEntity(
-                THREAD_UUID_2, "aimyon", "コメントあり",
-                USER_UUID_1, now);
-        when(threadRepository.findByArtistId("aimyon", 0, 20))
-                .thenReturn(List.of(thread1, thread2));
-
-        // N+1対策: 一括取得モック
-        ThreadCommentEntity latestComment = createCommentEntity(
-                COMMENT_UUID_10, THREAD_UUID_2, "最新", USER_UUID_1, now);
-        when(threadCommentRepository.findLatestByThreadIds(anyList()))
-                .thenReturn(Map.of(THREAD_UUID_2, latestComment));
-
-        when(userRepository.findUsernamesByUserIds(anyList()))
-                .thenReturn(Map.of(USER_UUID_1, "ユーザ"));
+        // SQL側でソート済みの結果を返す
+        // コメントあり（latestCommentAt=now）→ コメントなし（createdAt=earlier）
+        Object[] row1 = createThreadListRow(
+                THREAD_UUID_2, "コメントあり", "ユーザ",
+                "最新", now, now);
+        Object[] row2 = createThreadListRow(
+                THREAD_UUID_1, "コメントなし", "ユーザ",
+                null, null, earlier);
+        when(threadRepository.findByArtistIdWithUsername("aimyon", 0, 20))
+                .thenReturn(List.of(row1, row2));
 
         Optional<ThreadListResponse> result =
                 threadService.getThreadList("aimyon", 1, 20);
@@ -776,18 +795,11 @@ class ThreadServiceTest {
         when(threadRepository.countByArtistId("aimyon"))
                 .thenReturn(1L);
 
-        ThreadEntity thread = createThreadEntity(
-                THREAD_UUID_1, "aimyon", "テスト",
-                USER_UUID_1, Instant.now());
-        when(threadRepository.findByArtistId("aimyon", 0, 20))
-                .thenReturn(List.of(thread));
-
-        // N+1対策: 空Map返却
-        when(threadCommentRepository.findLatestByThreadIds(anyList()))
-                .thenReturn(Map.of());
-
-        when(userRepository.findUsernamesByUserIds(anyList()))
-                .thenReturn(Map.of(USER_UUID_1, "ユーザ"));
+        Object[] row = createThreadListRow(
+                THREAD_UUID_1, "テスト", "ユーザ",
+                null, null, Instant.now());
+        when(threadRepository.findByArtistIdWithUsername("aimyon", 0, 20))
+                .thenReturn(List.<Object[]>of(row));
 
         Optional<ThreadListResponse> result =
                 threadService.getThreadList("aimyon", 1, 20);
