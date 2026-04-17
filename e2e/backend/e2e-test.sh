@@ -469,8 +469,9 @@ log ""
 log "--------------------------------------------"
 log "テスト18: スレッド詳細API（正常系）"
 log "--------------------------------------------"
-# 既存のスレッドID=1で詳細を取得
-result=$(do_get "${BASE_URL}/api/v1/community/aimyon/threads/1?page=1&size=10")
+# スレッド一覧から最初のスレッドのUUIDを取得して詳細を取得
+FIRST_THREAD_ID=$(do_get "${BASE_URL}/api/v1/community/aimyon/threads?page=1&size=20" | cut -d'|' -f2- | jq -r '.threads[0].threadId' 2>/dev/null)
+result=$(do_get "${BASE_URL}/api/v1/community/aimyon/threads/${FIRST_THREAD_ID}?page=1&size=10")
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "スレッド詳細 - ステータスコード200" "200" "$status" "$body"
@@ -483,7 +484,7 @@ log ""
 log "--------------------------------------------"
 log "テスト19: スレッド詳細API（存在しないスレッド）"
 log "--------------------------------------------"
-result=$(do_get "${BASE_URL}/api/v1/community/aimyon/threads/99999?page=1&size=10")
+result=$(do_get "${BASE_URL}/api/v1/community/aimyon/threads/00000000-0000-7000-8000-000000000000?page=1&size=10")
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "スレッド詳細（不在） - ステータスコード404" "404" "$status" "$body"
@@ -531,7 +532,7 @@ log ""
 log "--------------------------------------------"
 log "テスト23: コメント追加API（認証なし）"
 log "--------------------------------------------"
-result=$(do_post "${BASE_URL}/api/v1/community/aimyon/threads/1/comments" '{"content":"テスト","sessionId":"invalid-session"}')
+result=$(do_post "${BASE_URL}/api/v1/community/aimyon/threads/${FIRST_THREAD_ID}/comments" '{"content":"テスト","sessionId":"invalid-session"}')
 status=$(echo "$result" | cut -d'|' -f1)
 body=$(echo "$result" | cut -d'|' -f2-)
 record_result "コメント追加（認証なし） - ステータスコード401" "401" "$status" "$body"
