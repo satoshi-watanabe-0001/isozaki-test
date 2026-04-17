@@ -8,7 +8,7 @@ import java.time.Instant;
  * <p>スレッド一覧画面で表示するスレッド情報を保持するDTO。
  * スレッドタイトル、作成ユーザ名、最新コメント情報を含む。</p>
  *
- * @param threadId          スレッドID
+ * @param threadId          スレッドID（UUIDv7文字列）
  * @param title             スレッドタイトル
  * @param createdByUsername スレッド作成ユーザ名
  * @param latestComment     最新コメント内容（存在しない場合はnull）
@@ -16,7 +16,7 @@ import java.time.Instant;
  * @since 1.3
  */
 public record ThreadListItemResponse(
-        int threadId,
+        String threadId,
         String title,
         String createdByUsername,
         String latestComment,

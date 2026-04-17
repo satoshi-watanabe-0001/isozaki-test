@@ -12,8 +12,6 @@ package com.isozaki.auth.entity;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -22,7 +20,7 @@ import java.util.UUID;
 /**
  * スレッド情報を保持するエンティティ
  *
- * <p>スレッドID（連番）、アーティストID、タイトル（最大50文字）、
+ * <p>スレッドID（UUIDv7）、アーティストID、タイトル（最大50文字）、
  * 作成者ユーザID、作成日時を管理する。</p>
  *
  * @since 1.3
@@ -32,12 +30,11 @@ import java.util.UUID;
 public class ThreadEntity extends PanacheEntityBase {
 
     /**
-     * スレッドID（連番、自動採番）
+     * スレッドID（UUIDv7形式、アプリケーション側で生成）
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "thread_id", nullable = false)
-    public Integer threadId;
+    @Column(name = "thread_id", nullable = false, columnDefinition = "uuid")
+    public UUID threadId;
 
     /**
      * アーティストID（外部キー）

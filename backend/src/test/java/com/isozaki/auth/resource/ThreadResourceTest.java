@@ -27,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -47,6 +48,13 @@ class ThreadResourceTest {
 
     private ThreadResource threadResource;
 
+    private static final UUID THREAD_UUID_1 =
+            UUID.fromString("01970000-1000-7000-8000-000000000001");
+    private static final UUID THREAD_UUID_2 =
+            UUID.fromString("01970000-1000-7000-8000-000000000002");
+    private static final UUID THREAD_UUID_NEW =
+            UUID.fromString("01970000-1000-7000-8000-000000000100");
+
     @BeforeEach
     void setUp() {
         threadResource = new ThreadResource(threadService);
@@ -65,11 +73,13 @@ class ThreadResourceTest {
         ThreadListResponse expectedResponse = new ThreadListResponse(
                 List.of(
                         new ThreadListItemResponse(
-                                1, "テストスレッド", "テストユーザー",
+                                THREAD_UUID_1.toString(),
+                                "テストスレッド", "テストユーザー",
                                 "最新コメント",
                                 Instant.parse("2025-04-13T10:00:00Z")),
                         new ThreadListItemResponse(
-                                2, "テストスレッド2", "テストユーザー2",
+                                THREAD_UUID_2.toString(),
+                                "テストスレッド2", "テストユーザー2",
                                 null, null)
                 ),
                 2L, 1, 20, 1
@@ -99,13 +109,15 @@ class ThreadResourceTest {
     @DisplayName("スレッド一覧取得: アーティスト不在時、404 Not Foundが返される")
     void shouldReturnNotFoundForThreadList() {
         // Given: アーティストが存在しない
-        when(threadService.getThreadList("unknown", 1, 20)).thenReturn(Optional.empty());
+        when(threadService.getThreadList("unknown", 1, 20))
+                .thenReturn(Optional.empty());
 
         // When: 存在しないアーティストIDでスレッド一覧取得を実行
         Response response = threadResource.getThreadList("unknown", 1, 20);
 
         // Then: HTTP 404 Not Foundが返却される
-        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
+                response.getStatus());
         verify(threadService).getThreadList("unknown", 1, 20);
     }
 
@@ -113,34 +125,40 @@ class ThreadResourceTest {
      * 【テスト対象】ThreadResource#getThreadDetail
      * 【テストケース】スレッドが存在する場合のスレッド詳細取得
      * 【期待結果】HTTP 200 OKとスレッド詳細が返却される
-     * 【ビジネス要件】スレッド詳細API - 正常系
+     * 【ビジネス要件】スレッド詳細API - 正常系（UUID文字列パラメータ）
      */
     @Test
     @DisplayName("スレッド詳細取得: スレッド存在時、200 OKとスレッド詳細が返される")
     void shouldReturnOkWithThreadDetail() {
         // Given: スレッド詳細データが存在する
         ThreadDetailResponse expectedResponse = new ThreadDetailResponse(
-                1, "テストスレッド", "テストユーザー",
+                THREAD_UUID_1.toString(),
+                "テストスレッド", "テストユーザー",
                 Instant.parse("2025-04-13T10:00:00Z"),
                 List.of(new ThreadCommentResponse(
-                        1, "テストコメント", "テストユーザー",
+                        "01970000-2000-7000-8000-000000000001",
+                        "テストコメント", "テストユーザー",
                         Instant.parse("2025-04-13T10:05:00Z"))),
                 1L, 1, 10, 1
         );
         when(threadService.getThreadDetail(
-                "aimyon", 1, 1, 10))
+                "aimyon", THREAD_UUID_1, 1, 10))
                 .thenReturn(Optional.of(expectedResponse));
 
-        // When: スレッド詳細取得APIを実行
-        Response response = threadResource.getThreadDetail("aimyon", 1, 1, 10);
+        // When: スレッド詳細取得APIをUUID文字列で実行
+        Response response = threadResource.getThreadDetail(
+                "aimyon", THREAD_UUID_1.toString(), 1, 10);
 
         // Then: HTTP 200 OKと正しいスレッド詳細が返却される
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        ThreadDetailResponse body = (ThreadDetailResponse) response.getEntity();
+        assertEquals(Response.Status.OK.getStatusCode(),
+                response.getStatus());
+        ThreadDetailResponse body =
+                (ThreadDetailResponse) response.getEntity();
         assertNotNull(body);
         assertEquals("テストスレッド", body.title());
         assertEquals(1, body.comments().size());
-        verify(threadService).getThreadDetail("aimyon", 1, 1, 10);
+        verify(threadService).getThreadDetail(
+                "aimyon", THREAD_UUID_1, 1, 10);
     }
 
     /**
@@ -153,14 +171,39 @@ class ThreadResourceTest {
     @DisplayName("スレッド詳細取得: スレッドが存在しない場合、404 Not Foundが返されること")
     void shouldReturnNotFoundForThreadDetail() {
         // Given: スレッドが存在しない
-        when(threadService.getThreadDetail("aimyon", 999, 1, 10)).thenReturn(Optional.empty());
+        UUID unknownThread = UUID.fromString(
+                "01970000-1000-7000-8000-ffffffffffff");
+        when(threadService.getThreadDetail(
+                "aimyon", unknownThread, 1, 10))
+                .thenReturn(Optional.empty());
 
         // When: 存在しないスレッドIDでスレッド詳細取得を実行
-        Response response = threadResource.getThreadDetail("aimyon", 999, 1, 10);
+        Response response = threadResource.getThreadDetail(
+                "aimyon", unknownThread.toString(), 1, 10);
 
         // Then: HTTP 404 Not Foundが返却される
-        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
-        verify(threadService).getThreadDetail("aimyon", 999, 1, 10);
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
+                response.getStatus());
+        verify(threadService).getThreadDetail(
+                "aimyon", unknownThread, 1, 10);
+    }
+
+    /**
+     * 【テスト対象】ThreadResource#getThreadDetail
+     * 【テストケース】不正なUUID形式のスレッドID
+     * 【期待結果】HTTP 400 Bad Requestが返却される
+     * 【ビジネス要件】スレッド詳細API - 不正なUUID形式
+     */
+    @Test
+    @DisplayName("スレッド詳細取得: 不正なUUID形式の場合、400 Bad Requestが返される")
+    void shouldReturnBadRequestForInvalidThreadIdFormat() {
+        // When: 不正なUUID形式でスレッド詳細取得を実行
+        Response response = threadResource.getThreadDetail(
+                "aimyon", "invalid-uuid", 1, 10);
+
+        // Then: HTTP 400 Bad Requestが返却される
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(),
+                response.getStatus());
     }
 
     /**
@@ -176,9 +219,11 @@ class ThreadResourceTest {
         CreateThreadRequest request = new CreateThreadRequest(
                 "新規スレッド", "初回コメント", "valid-session-id");
         ThreadDetailResponse expectedResponse = new ThreadDetailResponse(
-                10, "新規スレッド", "テストユーザー", Instant.now(),
+                THREAD_UUID_NEW.toString(),
+                "新規スレッド", "テストユーザー", Instant.now(),
                 List.of(new ThreadCommentResponse(
-                        1, "初回コメント",
+                        "01970000-2000-7000-8000-000000000100",
+                        "初回コメント",
                         "テストユーザー", Instant.now())),
                 1L, 1, 10, 1
         );
@@ -190,11 +235,14 @@ class ThreadResourceTest {
         Response response = threadResource.createThread("aimyon", request);
 
         // Then: HTTP 201 Createdと作成されたスレッド詳細が返却される
-        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
-        ThreadDetailResponse body = (ThreadDetailResponse) response.getEntity();
+        assertEquals(Response.Status.CREATED.getStatusCode(),
+                response.getStatus());
+        ThreadDetailResponse body =
+                (ThreadDetailResponse) response.getEntity();
         assertNotNull(body);
         assertEquals("新規スレッド", body.title());
-        verify(threadService).createThread(eq("aimyon"), any(CreateThreadRequest.class));
+        verify(threadService).createThread(
+                eq("aimyon"), any(CreateThreadRequest.class));
     }
 
     /**
@@ -210,43 +258,53 @@ class ThreadResourceTest {
         CreateThreadRequest request = new CreateThreadRequest(
                 "新規スレッド", "初回コメント",
                 "invalid-session-id");
-        when(threadService.createThread(eq("aimyon"), any(CreateThreadRequest.class))).thenReturn(Optional.empty());
+        when(threadService.createThread(
+                eq("aimyon"), any(CreateThreadRequest.class)))
+                .thenReturn(Optional.empty());
 
         // When: 未認証状態でスレッド作成APIを実行
         Response response = threadResource.createThread("aimyon", request);
 
         // Then: HTTP 401 Unauthorizedが返却される
-        assertEquals(Response.Status.UNAUTHORIZED.getStatusCode(), response.getStatus());
+        assertEquals(Response.Status.UNAUTHORIZED.getStatusCode(),
+                response.getStatus());
     }
 
     /**
      * 【テスト対象】ThreadResource#addComment
      * 【テストケース】ログイン済みユーザによるコメント追加
      * 【期待結果】HTTP 201 Createdとコメント情報が返却される
-     * 【ビジネス要件】コメント追加API - 正常系
+     * 【ビジネス要件】コメント追加API - 正常系（UUID文字列パラメータ）
      */
     @Test
     @DisplayName("コメント追加: ログイン済みユーザ時、201 Createdとコメント情報が返される")
     void shouldReturnCreatedForNewComment() {
         // Given: ログイン済みユーザによるコメント追加リクエスト
-        CreateCommentRequest request = new CreateCommentRequest("新しいコメント", "valid-session-id");
+        CreateCommentRequest request = new CreateCommentRequest(
+                "新しいコメント", "valid-session-id");
         ThreadCommentResponse expectedResponse = new ThreadCommentResponse(
-                5, "新しいコメント", "テストユーザー", Instant.now()
+                "01970000-2000-7000-8000-000000000050",
+                "新しいコメント", "テストユーザー", Instant.now()
         );
         when(threadService.addComment(
-                eq("aimyon"), eq(1),
+                eq("aimyon"), eq(THREAD_UUID_1),
                 any(CreateCommentRequest.class)))
                 .thenReturn(Optional.of(expectedResponse));
 
-        // When: コメント追加APIを実行
-        Response response = threadResource.addComment("aimyon", 1, request);
+        // When: コメント追加APIをUUID文字列で実行
+        Response response = threadResource.addComment(
+                "aimyon", THREAD_UUID_1.toString(), request);
 
         // Then: HTTP 201 Createdと作成されたコメント情報が返却される
-        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
-        ThreadCommentResponse body = (ThreadCommentResponse) response.getEntity();
+        assertEquals(Response.Status.CREATED.getStatusCode(),
+                response.getStatus());
+        ThreadCommentResponse body =
+                (ThreadCommentResponse) response.getEntity();
         assertNotNull(body);
         assertEquals("新しいコメント", body.content());
-        verify(threadService).addComment(eq("aimyon"), eq(1), any(CreateCommentRequest.class));
+        verify(threadService).addComment(
+                eq("aimyon"), eq(THREAD_UUID_1),
+                any(CreateCommentRequest.class));
     }
 
     /**
@@ -262,14 +320,38 @@ class ThreadResourceTest {
         CreateCommentRequest request = new CreateCommentRequest(
                 "新しいコメント", "invalid-session-id");
         when(threadService.addComment(
-                eq("aimyon"), eq(1),
+                eq("aimyon"), eq(THREAD_UUID_1),
                 any(CreateCommentRequest.class)))
                 .thenReturn(Optional.empty());
 
         // When: 未認証状態でコメント追加APIを実行
-        Response response = threadResource.addComment("aimyon", 1, request);
+        Response response = threadResource.addComment(
+                "aimyon", THREAD_UUID_1.toString(), request);
 
         // Then: HTTP 401 Unauthorizedが返却される
-        assertEquals(Response.Status.UNAUTHORIZED.getStatusCode(), response.getStatus());
+        assertEquals(Response.Status.UNAUTHORIZED.getStatusCode(),
+                response.getStatus());
+    }
+
+    /**
+     * 【テスト対象】ThreadResource#addComment
+     * 【テストケース】不正なUUID形式のスレッドID
+     * 【期待結果】HTTP 400 Bad Requestが返却される
+     * 【ビジネス要件】コメント追加API - 不正なUUID形式
+     */
+    @Test
+    @DisplayName("コメント追加: 不正なUUID形式の場合、400 Bad Requestが返される")
+    void shouldReturnBadRequestForInvalidThreadIdInComment() {
+        // Given: コメント追加リクエスト
+        CreateCommentRequest request = new CreateCommentRequest(
+                "コメント", "valid-session-id");
+
+        // When: 不正なUUID形式でコメント追加を実行
+        Response response = threadResource.addComment(
+                "aimyon", "not-a-uuid", request);
+
+        // Then: HTTP 400 Bad Requestが返却される
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(),
+                response.getStatus());
     }
 }

@@ -14,6 +14,7 @@ import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * スレッドデータアクセスリポジトリ
@@ -24,7 +25,7 @@ import java.util.List;
  * @since 1.3
  */
 @ApplicationScoped
-public class ThreadRepository implements PanacheRepositoryBase<ThreadEntity, Integer> {
+public class ThreadRepository implements PanacheRepositoryBase<ThreadEntity, UUID> {
 
     /**
      * 指定アーティストのスレッド一覧を取得する（作成日時降順）

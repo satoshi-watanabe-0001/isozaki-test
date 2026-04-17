@@ -199,7 +199,7 @@ export default function CreateThreadModal({
                 setTitle(newValue);
                 validateTitle(newValue);
               }}
-              maxLength={MAX_TITLE_LENGTH + 10}
+              maxLength={MAX_TITLE_LENGTH}
               placeholder="スレッドタイトルを入力"
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
               data-testid="thread-title-input"
@@ -239,7 +239,7 @@ export default function CreateThreadModal({
                 setComment(e.target.value);
                 validateComment(e.target.value);
               }}
-              maxLength={MAX_COMMENT_LENGTH + 10}
+              maxLength={MAX_COMMENT_LENGTH}
               rows={4}
               placeholder="コメントを入力"
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"

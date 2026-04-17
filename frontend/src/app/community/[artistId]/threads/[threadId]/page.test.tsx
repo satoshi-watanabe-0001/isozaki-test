@@ -18,7 +18,7 @@ vi.mock("react-hot-toast", () => ({
 
 /** next/navigationのモック */
 vi.mock("next/navigation", () => ({
-  useParams: () => ({ artistId: "aimyon", threadId: "1" }),
+  useParams: () => ({ artistId: "aimyon", threadId: "01970000-1000-7000-8000-000000000001" }),
   useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
   notFound: () => {
     throw new Error("NEXT_NOT_FOUND");
@@ -27,19 +27,19 @@ vi.mock("next/navigation", () => ({
 
 /** スレッド詳細テストデータ */
 const mockThreadDetailResponse = {
-  threadId: 1,
+  threadId: "01970000-1000-7000-8000-000000000001",
   title: "テストスレッド",
   createdByUsername: "テストユーザー1",
   createdAt: "2025-04-13T10:00:00Z",
   comments: [
     {
-      commentId: 1,
+      commentId: "01970000-2000-7000-8000-000000000001",
       content: "テストコメント1",
       createdByUsername: "テストユーザー1",
       createdAt: "2025-04-13T10:05:00Z",
     },
     {
-      commentId: 2,
+      commentId: "01970000-2000-7000-8000-000000000002",
       content: "テストコメント2\n改行テスト",
       createdByUsername: "テストユーザー2",
       createdAt: "2025-04-13T10:10:00Z",
@@ -88,8 +88,8 @@ describe("ThreadDetailPage", () => {
     });
 
     expect(screen.getByTestId("comment-list")).toBeInTheDocument();
-    expect(screen.getByTestId("comment-content-1")).toHaveTextContent("テストコメント1");
-    expect(screen.getByTestId("comment-content-2")).toHaveTextContent("テストコメント2");
+    expect(screen.getByTestId("comment-content-01970000-2000-7000-8000-000000000001")).toHaveTextContent("テストコメント1");
+    expect(screen.getByTestId("comment-content-01970000-2000-7000-8000-000000000002")).toHaveTextContent("テストコメント2");
   });
 
   /**
@@ -108,7 +108,7 @@ describe("ThreadDetailPage", () => {
     renderWithAuth();
 
     await waitFor(() => {
-      const commentElement = screen.getByTestId("comment-content-2");
+      const commentElement = screen.getByTestId("comment-content-01970000-2000-7000-8000-000000000002");
       expect(commentElement).toBeInTheDocument();
       expect(commentElement.className).toContain("whitespace-pre-wrap");
     });

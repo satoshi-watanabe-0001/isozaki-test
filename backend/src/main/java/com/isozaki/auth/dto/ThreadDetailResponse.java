@@ -8,7 +8,7 @@ import java.util.List;
  *
  * <p>スレッド詳細画面で表示するスレッド情報とコメント一覧を保持するDTO。</p>
  *
- * @param threadId          スレッドID
+ * @param threadId          スレッドID（UUIDv7文字列）
  * @param title             スレッドタイトル
  * @param createdByUsername スレッド作成ユーザ名
  * @param createdAt         スレッド作成日時
@@ -20,7 +20,7 @@ import java.util.List;
  * @since 1.3
  */
 public record ThreadDetailResponse(
-        int threadId,
+        String threadId,
         String title,
         String createdByUsername,
         Instant createdAt,

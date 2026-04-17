@@ -8,8 +8,8 @@
 
 /** スレッド一覧アイテム */
 export interface ThreadListItem {
-  /** スレッドID */
-  threadId: number;
+  /** スレッドID（UUIDv7文字列） */
+  threadId: string;
   /** スレッドタイトル */
   title: string;
   /** スレッド作成ユーザ名 */
@@ -36,8 +36,8 @@ export interface ThreadListResponse {
 
 /** スレッドコメント */
 export interface ThreadComment {
-  /** コメントID */
-  commentId: number;
+  /** コメントID（UUIDv7文字列） */
+  commentId: string;
   /** コメント内容 */
   content: string;
   /** コメント作成ユーザ名 */
@@ -48,8 +48,8 @@ export interface ThreadComment {
 
 /** スレッド詳細レスポンス */
 export interface ThreadDetailResponse {
-  /** スレッドID */
-  threadId: number;
+  /** スレッドID（UUIDv7文字列） */
+  threadId: string;
   /** スレッドタイトル */
   title: string;
   /** スレッド作成ユーザ名 */

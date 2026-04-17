@@ -30,14 +30,14 @@ vi.mock("next/navigation", () => ({
 const mockThreadListResponse = {
   threads: [
     {
-      threadId: 1,
+      threadId: "01970000-1000-7000-8000-000000000001",
       title: "テストスレッド1",
       createdByUsername: "テストユーザー1",
       latestComment: "最新コメント1",
       latestCommentAt: "2025-04-13T10:00:00Z",
     },
     {
-      threadId: 2,
+      threadId: "01970000-1000-7000-8000-000000000002",
       title: "テストスレッド2",
       createdByUsername: "テストユーザー2",
       latestComment: null,
@@ -88,9 +88,9 @@ describe("ThreadListPage", () => {
       expect(screen.getByTestId("thread-list")).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId("thread-title-1")).toHaveTextContent("テストスレッド1");
-    expect(screen.getByTestId("thread-title-2")).toHaveTextContent("テストスレッド2");
-    expect(screen.getByTestId("thread-latest-comment-1")).toHaveTextContent("最新コメント1");
+    expect(screen.getByTestId("thread-title-01970000-1000-7000-8000-000000000001")).toHaveTextContent("テストスレッド1");
+    expect(screen.getByTestId("thread-title-01970000-1000-7000-8000-000000000002")).toHaveTextContent("テストスレッド2");
+    expect(screen.getByTestId("thread-latest-comment-01970000-1000-7000-8000-000000000001")).toHaveTextContent("最新コメント1");
   });
 
   /**
@@ -224,7 +224,7 @@ describe("ThreadListPage", () => {
     renderWithAuth();
 
     await waitFor(() => {
-      expect(screen.getByTestId("thread-date-1")).toBeInTheDocument();
+      expect(screen.getByTestId("thread-date-01970000-1000-7000-8000-000000000001")).toBeInTheDocument();
     });
   });
 });
