@@ -4,18 +4,22 @@
  * <p>スレッド機能のビジネスロジックを担当するサービス。
  * スレッド一覧・詳細取得、スレッド作成、コメント追加を提供する。
  * スレッド一覧・コメント一覧取得時はDB JOINでユーザ名を取得し、
- * 最新コメント情報はthreadsテーブルの非正規化カラムから取得する。</p>
+ * 最新コメント情報はthreadsテーブルの非正規化カラムから取得する。
+ * コメント追加取得時はカーソルベースページング（commentId基準）で重複を回避する。</p>
  *
  * @since 1.3
  */
 
 package com.isozaki.auth.service;
 
+import com.isozaki.auth.dto.CommentProjection;
 import com.isozaki.auth.dto.CreateCommentRequest;
 import com.isozaki.auth.dto.CreateThreadRequest;
 import com.isozaki.auth.dto.ThreadCommentResponse;
+import com.isozaki.auth.dto.ThreadDetailProjection;
 import com.isozaki.auth.dto.ThreadDetailResponse;
 import com.isozaki.auth.dto.ThreadListItemResponse;
+import com.isozaki.auth.dto.ThreadListProjection;
 import com.isozaki.auth.dto.ThreadListResponse;
 import com.isozaki.auth.entity.ThreadCommentEntity;
 import com.isozaki.auth.entity.ThreadEntity;
@@ -36,7 +40,8 @@ import java.util.UUID;
  *
  * <p>スレッドリポジトリ、コメントリポジトリ、セッションサービスと連携して、
  * スレッド一覧・詳細・作成・コメント追加の処理を行う。
- * 一覧・詳細取得時はJPQL JOINでユーザ名を取得し、N+1問題を回避する。</p>
+ * 一覧・詳細取得時はJPQL JOINでユーザ名を取得し、N+1問題を回避する。
+ * コメント追加取得時はカーソルベースページングで重複を回避する。</p>
  *
  * @since 1.3
  */
@@ -102,11 +107,12 @@ public class ThreadService {
         long totalCount = threadRepository.countByArtistId(artistId);
         int totalPages = (int) Math.ceil((double) totalCount / clampedSize);
 
-        // JPQL JOINでスレッド一覧＋ユーザ名を取得（ソートはSQL側で実施）
-        List<Object[]> rows = threadRepository.findByArtistIdWithUsername(
-                artistId, page - 1, clampedSize);
+        // JPQL JOINでスレッド一覧＋ユーザ名をProjection DTOとして取得
+        List<ThreadListProjection> projections =
+                threadRepository.findByArtistIdWithUsername(
+                        artistId, page - 1, clampedSize);
 
-        List<ThreadListItemResponse> items = rows.stream()
+        List<ThreadListItemResponse> items = projections.stream()
                 .map(this::toThreadListItem)
                 .toList();
 
@@ -115,9 +121,10 @@ public class ThreadService {
     }
 
     /**
-     * 指定スレッドの詳細情報を取得する
+     * 指定スレッドの詳細情報を取得する（オフセットベース）
      *
-     * <p>JPQL JOINでスレッド作成者・コメント作成者のユーザ名を取得する。</p>
+     * <p>JPQL JOINでスレッド作成者・コメント作成者のユーザ名を取得する。
+     * 初回コメント取得時に使用する。</p>
      *
      * @param artistId アーティストID
      * @param threadId スレッドID
@@ -129,35 +136,85 @@ public class ThreadService {
             String artistId, UUID threadId, int page, int size) {
         int clampedSize = clampSize(size);
 
-        // JPQL JOINでスレッド＋ユーザ名を取得（アーティスト整合チェック含む）
-        Object[] threadRow = threadRepository.findByIdAndArtistIdWithUsername(
-                threadId, artistId);
-        if (threadRow == null) {
+        // JPQL JOINでスレッド＋ユーザ名をProjection DTOとして取得
+        ThreadDetailProjection threadProjection =
+                threadRepository.findByIdAndArtistIdWithUsername(
+                        threadId, artistId);
+        if (threadProjection == null) {
             return Optional.empty();
         }
 
         long totalComments = threadCommentRepository.countByThreadId(threadId);
         int totalPages = (int) Math.ceil((double) totalComments / clampedSize);
 
-        // JPQL JOINでコメント一覧＋ユーザ名を取得
-        List<Object[]> commentRows =
+        // JPQL JOINでコメント一覧＋ユーザ名をProjection DTOとして取得
+        List<CommentProjection> commentProjections =
                 threadCommentRepository.findByThreadIdWithUsername(
                         threadId, page - 1, clampedSize);
 
-        List<ThreadCommentResponse> commentResponses = commentRows.stream()
+        List<ThreadCommentResponse> commentResponses = commentProjections.stream()
                 .map(this::toCommentResponse)
                 .toList();
 
         return Optional.of(new ThreadDetailResponse(
-                ((UUID) threadRow[0]).toString(),
-                (String) threadRow[1],
-                (String) threadRow[2],
-                (Instant) threadRow[3],
+                threadProjection.threadId().toString(),
+                threadProjection.title(),
+                threadProjection.username(),
+                threadProjection.createdAt(),
                 commentResponses,
                 totalComments,
                 page,
                 clampedSize,
                 totalPages
+        ));
+    }
+
+    /**
+     * 指定スレッドの詳細情報を取得する（カーソルベースページング）
+     *
+     * <p>JPQL JOINでスレッド作成者・コメント作成者のユーザ名を取得する。
+     * 指定されたcommentIdより前（古い）のコメントを取得する。
+     * 別セッションでのコメント追加による重複取得を回避する。</p>
+     *
+     * @param artistId       アーティストID
+     * @param threadId       スレッドID
+     * @param beforeCommentId このコメントIDより前のコメントを取得
+     * @param size           取得件数
+     * @return スレッド詳細レスポンス（存在しない場合はOptional.empty）
+     */
+    public Optional<ThreadDetailResponse> getThreadDetailBefore(
+            String artistId, UUID threadId, UUID beforeCommentId, int size) {
+        int clampedSize = clampSize(size);
+
+        // JPQL JOINでスレッド＋ユーザ名をProjection DTOとして取得
+        ThreadDetailProjection threadProjection =
+                threadRepository.findByIdAndArtistIdWithUsername(
+                        threadId, artistId);
+        if (threadProjection == null) {
+            return Optional.empty();
+        }
+
+        long totalComments = threadCommentRepository.countByThreadId(threadId);
+
+        // カーソルベースでコメントを取得
+        List<CommentProjection> commentProjections =
+                threadCommentRepository.findByThreadIdWithUsernameBefore(
+                        threadId, beforeCommentId, clampedSize);
+
+        List<ThreadCommentResponse> commentResponses = commentProjections.stream()
+                .map(this::toCommentResponse)
+                .toList();
+
+        return Optional.of(new ThreadDetailResponse(
+                threadProjection.threadId().toString(),
+                threadProjection.title(),
+                threadProjection.username(),
+                threadProjection.createdAt(),
+                commentResponses,
+                totalComments,
+                0,
+                clampedSize,
+                0
         ));
     }
 
@@ -288,34 +345,35 @@ public class ThreadService {
     }
 
     /**
-     * JPQL JOIN結果の行をスレッド一覧アイテムDTOに変換する
+     * ThreadListProjectionをスレッド一覧アイテムDTOに変換する
      *
-     * @param row Object[] [threadId, title, username, latestCommentContent,
-     *            latestCommentAt, createdAt]
+     * @param projection JPQL JOIN結果のプロジェクション
      * @return スレッド一覧アイテムDTO
      */
-    private ThreadListItemResponse toThreadListItem(Object[] row) {
+    private ThreadListItemResponse toThreadListItem(ThreadListProjection projection) {
         return new ThreadListItemResponse(
-                ((UUID) row[0]).toString(),
-                (String) row[1],
-                (String) row[2],
-                (String) row[3],
-                row[4] != null ? (Instant) row[4] : (Instant) row[5]
+                projection.threadId().toString(),
+                projection.title(),
+                projection.username(),
+                projection.latestCommentContent(),
+                projection.latestCommentAt() != null
+                        ? projection.latestCommentAt()
+                        : projection.createdAt()
         );
     }
 
     /**
-     * JPQL JOIN結果の行をコメントレスポンスDTOに変換する
+     * CommentProjectionをコメントレスポンスDTOに変換する
      *
-     * @param row Object[] [commentId, content, username, createdAt]
+     * @param projection JPQL JOIN結果のプロジェクション
      * @return コメントレスポンスDTO
      */
-    private ThreadCommentResponse toCommentResponse(Object[] row) {
+    private ThreadCommentResponse toCommentResponse(CommentProjection projection) {
         return new ThreadCommentResponse(
-                ((UUID) row[0]).toString(),
-                (String) row[1],
-                (String) row[2],
-                (Instant) row[3]
+                projection.commentId().toString(),
+                projection.content(),
+                projection.username(),
+                projection.createdAt()
         );
     }
 

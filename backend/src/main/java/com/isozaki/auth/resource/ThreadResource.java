@@ -87,12 +87,15 @@ public class ThreadResource {
      *
      * <p>指定スレッドの詳細情報とコメント一覧をページング付きで返却する。
      * コメントは作成日時の降順で表示される。認証不要。
-     * sizeパラメータはサーバ側で上限100に制限される。</p>
+     * sizeパラメータはサーバ側で上限100に制限される。
+     * beforeパラメータ（commentId）指定時はカーソルベースページングで
+     * 重複取得を回避する。</p>
      *
      * @param artistId アーティストID
      * @param threadId スレッドID（UUIDv7文字列）
-     * @param page     コメントページ番号（1始まり、デフォルト1）
+     * @param page     コメントページ番号（1始まり、デフォルト1、before未指定時に使用）
      * @param size     1ページあたりのコメント件数（デフォルト10、上限100）
+     * @param before   カーソル用commentId（このIDより前のコメントを取得、省略時はオフセットベース）
      * @return 200 OK: スレッド詳細、404 Not Found: スレッド不在、
      *         400 Bad Request: 不正なUUID形式
      */
@@ -102,7 +105,8 @@ public class ThreadResource {
             @PathParam("artistId") String artistId,
             @PathParam("threadId") String threadId,
             @QueryParam("page") @DefaultValue("1") int page,
-            @QueryParam("size") @DefaultValue("10") int size) {
+            @QueryParam("size") @DefaultValue("10") int size,
+            @QueryParam("before") String before) {
 
         UUID threadUuid;
         try {
@@ -111,8 +115,22 @@ public class ThreadResource {
             return Response.status(Response.Status.BAD_REQUEST).build();
         }
 
-        Optional<ThreadDetailResponse> result =
-                threadService.getThreadDetail(artistId, threadUuid, page, size);
+        Optional<ThreadDetailResponse> result;
+
+        if (before != null && !before.isEmpty()) {
+            // カーソルベースページング（commentId基準）
+            UUID beforeCommentId;
+            try {
+                beforeCommentId = UUID.fromString(before);
+            } catch (IllegalArgumentException e) {
+                return Response.status(Response.Status.BAD_REQUEST).build();
+            }
+            result = threadService.getThreadDetailBefore(
+                    artistId, threadUuid, beforeCommentId, size);
+        } else {
+            // オフセットベースページング（初回取得時）
+            result = threadService.getThreadDetail(artistId, threadUuid, page, size);
+        }
 
         if (result.isEmpty()) {
             return Response.status(Response.Status.NOT_FOUND).build();

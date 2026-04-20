@@ -98,7 +98,7 @@ describe("ThreadDetailPage", () => {
    * 【期待結果】whitespace-pre-wrapで改行が表示される
    * 【ビジネス要件】コメント表示時の改行保持
    */
-  it("コメントの改行が保持されて表示されること", async () => {
+  it("コメントの改行が保持され長文が折り返されること", async () => {
     vi.spyOn(global, "fetch").mockResolvedValueOnce({
       ok: true,
       status: 200,
@@ -111,6 +111,7 @@ describe("ThreadDetailPage", () => {
       const commentElement = screen.getByTestId("comment-content-01970000-2000-7000-8000-000000000002");
       expect(commentElement).toBeInTheDocument();
       expect(commentElement.className).toContain("whitespace-pre-wrap");
+      expect(commentElement.className).toContain("break-words");
     });
   });
 

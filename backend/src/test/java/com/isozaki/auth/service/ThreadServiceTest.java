@@ -3,17 +3,20 @@
  *
  * <p>スレッド機能のビジネスロジックをテストする。
  * 各リポジトリとSessionServiceはモックを使用する。
- * スレッド一覧・コメント一覧はJPQL JOIN結果（Object[]）をモックで再現する。</p>
+ * スレッド一覧・コメント一覧はProjection DTOをモックで再現する。</p>
  *
  * @since 1.3
  */
 
 package com.isozaki.auth.service;
 
+import com.isozaki.auth.dto.CommentProjection;
 import com.isozaki.auth.dto.CreateCommentRequest;
 import com.isozaki.auth.dto.CreateThreadRequest;
 import com.isozaki.auth.dto.ThreadCommentResponse;
+import com.isozaki.auth.dto.ThreadDetailProjection;
 import com.isozaki.auth.dto.ThreadDetailResponse;
+import com.isozaki.auth.dto.ThreadListProjection;
 import com.isozaki.auth.dto.ThreadListResponse;
 import com.isozaki.auth.entity.ArtistEntity;
 import com.isozaki.auth.entity.ThreadCommentEntity;
@@ -129,35 +132,6 @@ class ThreadServiceTest {
         return user;
     }
 
-    /**
-     * スレッド一覧JOIN結果のObject[]行を生成するヘルパー
-     * [threadId, title, username, latestCommentContent, latestCommentAt, createdAt]
-     */
-    private Object[] createThreadListRow(
-            UUID threadId, String title, String username,
-            String latestComment, Instant latestCommentAt, Instant createdAt) {
-        return new Object[]{threadId, title, username,
-                latestComment, latestCommentAt, createdAt};
-    }
-
-    /**
-     * スレッド詳細JOIN結果のObject[]行を生成するヘルパー
-     * [threadId, title, username, createdAt]
-     */
-    private Object[] createThreadDetailRow(
-            UUID threadId, String title, String username, Instant createdAt) {
-        return new Object[]{threadId, title, username, createdAt};
-    }
-
-    /**
-     * コメントJOIN結果のObject[]行を生成するヘルパー
-     * [commentId, content, username, createdAt]
-     */
-    private Object[] createCommentRow(
-            UUID commentId, String content, String username, Instant createdAt) {
-        return new Object[]{commentId, content, username, createdAt};
-    }
-
     // ========== getThreadList テスト ==========
 
     /**
@@ -182,10 +156,10 @@ class ThreadServiceTest {
      * 【テスト対象】ThreadService#getThreadList
      * 【テストケース】アーティスト存在時、スレッド一覧が返却される
      * 【期待結果】スレッド一覧がページング情報と共に返却される
-     * 【ビジネス要件】スレッド一覧取得 - 正常系（JPQL JOIN）
+     * 【ビジネス要件】スレッド一覧取得 - 正常系（Projection DTO）
      */
     @Test
-    @DisplayName("スレッド一覧: 正常系、JPQL JOINで一覧が返される")
+    @DisplayName("スレッド一覧: 正常系、Projection DTOで一覧が返される")
     void shouldReturnThreadListWhenArtistExists() {
         Instant now = Instant.now();
         Instant earlier = now.minusSeconds(3600);
@@ -195,15 +169,15 @@ class ThreadServiceTest {
         when(threadRepository.countByArtistId("aimyon"))
                 .thenReturn(2L);
 
-        // JPQL JOIN結果のモック（ソート済み: latestCommentAtの降順）
-        Object[] row1 = createThreadListRow(
+        // Projection DTOのモック（ソート済み: latestCommentAtの降順）
+        ThreadListProjection proj1 = new ThreadListProjection(
                 THREAD_UUID_1, "スレッド1", "テストユーザ1",
                 "最新コメント1", now, earlier);
-        Object[] row2 = createThreadListRow(
+        ThreadListProjection proj2 = new ThreadListProjection(
                 THREAD_UUID_2, "スレッド2", "テストユーザ2",
                 null, null, now);
         when(threadRepository.findByArtistIdWithUsername("aimyon", 0, 20))
-                .thenReturn(List.of(row1, row2));
+                .thenReturn(List.of(proj1, proj2));
 
         Optional<ThreadListResponse> result =
                 threadService.getThreadList("aimyon", 1, 20);
@@ -214,7 +188,7 @@ class ThreadServiceTest {
         assertEquals(1, response.page());
         assertEquals(20, response.size());
         assertEquals(2, response.threads().size());
-        // JPQL JOINの結果順（latestCommentAt降順）で返却
+        // Projection DTOの結果順（latestCommentAt降順）で返却
         assertEquals("スレッド1", response.threads().get(0).title());
         assertEquals(
                 "テストユーザ1",
@@ -332,8 +306,6 @@ class ThreadServiceTest {
     @Test
     @DisplayName("スレッド詳細: アーティストID不一致時、emptyが返される")
     void shouldReturnEmptyWhenArtistMismatch() {
-        // JPQL JOINのWHERE句でartist_idも条件に含むため、
-        // アーティスト不一致時はnullが返る
         when(threadRepository.findByIdAndArtistIdWithUsername(
                 THREAD_UUID_1, "different-artist")).thenReturn(null);
 
@@ -348,31 +320,31 @@ class ThreadServiceTest {
      * 【テスト対象】ThreadService#getThreadDetail
      * 【テストケース】正常系、スレッド詳細が返却される
      * 【期待結果】スレッド詳細とコメントが返却される
-     * 【ビジネス要件】スレッド詳細取得 - 正常系（JPQL JOIN）
+     * 【ビジネス要件】スレッド詳細取得 - 正常系（Projection DTO）
      */
     @Test
-    @DisplayName("スレッド詳細: 正常系、JPQL JOINで詳細が返される")
+    @DisplayName("スレッド詳細: 正常系、Projection DTOで詳細が返される")
     void shouldReturnThreadDetailWhenExists() {
         Instant now = Instant.now();
 
-        // JPQL JOINでスレッド＋ユーザ名を取得
-        Object[] threadRow = createThreadDetailRow(
+        // Projection DTOでスレッド＋ユーザ名を取得
+        ThreadDetailProjection threadProj = new ThreadDetailProjection(
                 THREAD_UUID_1, "テストスレッド", "ユーザ1", now);
         when(threadRepository.findByIdAndArtistIdWithUsername(
-                THREAD_UUID_1, "aimyon")).thenReturn(threadRow);
+                THREAD_UUID_1, "aimyon")).thenReturn(threadProj);
 
         when(threadCommentRepository.countByThreadId(THREAD_UUID_1))
                 .thenReturn(2L);
 
-        // JPQL JOINでコメント＋ユーザ名を取得
-        Object[] commentRow1 = createCommentRow(
+        // Projection DTOでコメント＋ユーザ名を取得
+        CommentProjection commentProj1 = new CommentProjection(
                 COMMENT_UUID_1, "コメント1", "ユーザ1", now);
-        Object[] commentRow2 = createCommentRow(
+        CommentProjection commentProj2 = new CommentProjection(
                 COMMENT_UUID_2, "コメント2\n改行あり", "ユーザ2",
                 now.minusSeconds(60));
         when(threadCommentRepository.findByThreadIdWithUsername(
                 THREAD_UUID_1, 0, 10))
-                .thenReturn(List.of(commentRow1, commentRow2));
+                .thenReturn(List.of(commentProj1, commentProj2));
 
         Optional<ThreadDetailResponse> result =
                 threadService.getThreadDetail(
@@ -407,10 +379,10 @@ class ThreadServiceTest {
         Instant now = Instant.now();
 
         // LEFT JOIN + COALESCEによりユーザ不在時は「不明なユーザ」が返る
-        Object[] threadRow = createThreadDetailRow(
+        ThreadDetailProjection threadProj = new ThreadDetailProjection(
                 THREAD_UUID_1, "テスト", "不明なユーザ", now);
         when(threadRepository.findByIdAndArtistIdWithUsername(
-                THREAD_UUID_1, "aimyon")).thenReturn(threadRow);
+                THREAD_UUID_1, "aimyon")).thenReturn(threadProj);
 
         when(threadCommentRepository.countByThreadId(THREAD_UUID_1))
                 .thenReturn(0L);
@@ -424,6 +396,101 @@ class ThreadServiceTest {
 
         assertTrue(result.isPresent());
         assertEquals("不明なユーザ", result.get().createdByUsername());
+    }
+
+    // ========== getThreadDetailBefore テスト（カーソルベースページング） ==========
+
+    /**
+     * 【テスト対象】ThreadService#getThreadDetailBefore
+     * 【テストケース】スレッドが存在しない場合
+     * 【期待結果】Optional.emptyが返却される
+     * 【ビジネス要件】カーソルベースページング - スレッド不在
+     */
+    @Test
+    @DisplayName("カーソルページング: スレッド不在時、emptyが返される")
+    void shouldReturnEmptyWhenThreadNotFoundForCursor() {
+        UUID unknownThread = UUID.fromString(
+                "01970000-1000-7000-8000-ffffffffffff");
+        when(threadRepository.findByIdAndArtistIdWithUsername(
+                unknownThread, "aimyon")).thenReturn(null);
+
+        Optional<ThreadDetailResponse> result =
+                threadService.getThreadDetailBefore(
+                        "aimyon", unknownThread, COMMENT_UUID_1, 10);
+
+        assertFalse(result.isPresent());
+    }
+
+    /**
+     * 【テスト対象】ThreadService#getThreadDetailBefore
+     * 【テストケース】正常系、カーソルより前のコメントが返却される
+     * 【期待結果】指定commentIdより前のコメントが返却される
+     * 【ビジネス要件】カーソルベースページング - 正常系
+     */
+    @Test
+    @DisplayName("カーソルページング: 正常系、カーソルより前のコメントが返される")
+    void shouldReturnCommentsBeforeCursor() {
+        Instant now = Instant.now();
+
+        ThreadDetailProjection threadProj = new ThreadDetailProjection(
+                THREAD_UUID_1, "テストスレッド", "ユーザ1", now);
+        when(threadRepository.findByIdAndArtistIdWithUsername(
+                THREAD_UUID_1, "aimyon")).thenReturn(threadProj);
+
+        when(threadCommentRepository.countByThreadId(THREAD_UUID_1))
+                .thenReturn(15L);
+
+        // カーソル（COMMENT_UUID_2）より前のコメントを返す
+        CommentProjection olderComment = new CommentProjection(
+                COMMENT_UUID_1, "古いコメント", "ユーザ2",
+                now.minusSeconds(120));
+        when(threadCommentRepository.findByThreadIdWithUsernameBefore(
+                THREAD_UUID_1, COMMENT_UUID_2, 10))
+                .thenReturn(List.of(olderComment));
+
+        Optional<ThreadDetailResponse> result =
+                threadService.getThreadDetailBefore(
+                        "aimyon", THREAD_UUID_1, COMMENT_UUID_2, 10);
+
+        assertTrue(result.isPresent());
+        ThreadDetailResponse detail = result.get();
+        assertEquals(1, detail.comments().size());
+        assertEquals("古いコメント", detail.comments().get(0).content());
+        assertEquals(15L, detail.totalComments());
+        // カーソルベースの場合、page/totalPagesは0
+        assertEquals(0, detail.page());
+        assertEquals(0, detail.totalPages());
+    }
+
+    /**
+     * 【テスト対象】ThreadService#getThreadDetailBefore
+     * 【テストケース】カーソルより前にコメントがない場合
+     * 【期待結果】空のコメントリストが返却される
+     * 【ビジネス要件】カーソルベースページング - 末端到達
+     */
+    @Test
+    @DisplayName("カーソルページング: カーソル以前にコメントなし、空リストが返される")
+    void shouldReturnEmptyCommentsWhenNoneBeforeCursor() {
+        Instant now = Instant.now();
+
+        ThreadDetailProjection threadProj = new ThreadDetailProjection(
+                THREAD_UUID_1, "テスト", "ユーザ1", now);
+        when(threadRepository.findByIdAndArtistIdWithUsername(
+                THREAD_UUID_1, "aimyon")).thenReturn(threadProj);
+
+        when(threadCommentRepository.countByThreadId(THREAD_UUID_1))
+                .thenReturn(5L);
+
+        when(threadCommentRepository.findByThreadIdWithUsernameBefore(
+                THREAD_UUID_1, COMMENT_UUID_1, 10))
+                .thenReturn(List.of());
+
+        Optional<ThreadDetailResponse> result =
+                threadService.getThreadDetailBefore(
+                        "aimyon", THREAD_UUID_1, COMMENT_UUID_1, 10);
+
+        assertTrue(result.isPresent());
+        assertEquals(0, result.get().comments().size());
     }
 
     // ========== createThread テスト ==========
@@ -761,14 +828,14 @@ class ThreadServiceTest {
 
         // SQL側でソート済みの結果を返す
         // コメントあり（latestCommentAt=now）→ コメントなし（createdAt=earlier）
-        Object[] row1 = createThreadListRow(
+        ThreadListProjection proj1 = new ThreadListProjection(
                 THREAD_UUID_2, "コメントあり", "ユーザ",
                 "最新", now, now);
-        Object[] row2 = createThreadListRow(
+        ThreadListProjection proj2 = new ThreadListProjection(
                 THREAD_UUID_1, "コメントなし", "ユーザ",
                 null, null, earlier);
         when(threadRepository.findByArtistIdWithUsername("aimyon", 0, 20))
-                .thenReturn(List.of(row1, row2));
+                .thenReturn(List.of(proj1, proj2));
 
         Optional<ThreadListResponse> result =
                 threadService.getThreadList("aimyon", 1, 20);
@@ -795,11 +862,11 @@ class ThreadServiceTest {
         when(threadRepository.countByArtistId("aimyon"))
                 .thenReturn(1L);
 
-        Object[] row = createThreadListRow(
+        ThreadListProjection proj = new ThreadListProjection(
                 THREAD_UUID_1, "テスト", "ユーザ",
                 null, null, Instant.now());
         when(threadRepository.findByArtistIdWithUsername("aimyon", 0, 20))
-                .thenReturn(List.<Object[]>of(row));
+                .thenReturn(List.of(proj));
 
         Optional<ThreadListResponse> result =
                 threadService.getThreadList("aimyon", 1, 20);

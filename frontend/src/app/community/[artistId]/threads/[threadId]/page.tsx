@@ -47,7 +47,6 @@ export default function ThreadDetailPage(): ReactNode {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [notFoundFlag, setNotFoundFlag] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState<number>(1);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
 
   const [isCommentModalOpen, setIsCommentModalOpen] = useState<boolean>(false);
@@ -74,7 +73,6 @@ export default function ThreadDetailPage(): ReactNode {
       const data: ThreadDetailResponse = await response.json();
       setThreadData(data);
       setAllComments(data.comments);
-      setCurrentPage(1);
     } catch (err) {
       const errorMessage: string =
         err instanceof Error ? err.message : "不明なエラーが発生しました";
@@ -89,14 +87,22 @@ export default function ThreadDetailPage(): ReactNode {
   }, [fetchThreadDetail]);
 
   /**
-   * 「もっと見る」クリック時に追加コメントを読み込む
+   * 「もっと見る」クリック時に追加コメントを読み込む（カーソルベースページング）
+   *
+   * 現在取得済みの最後のコメントのcommentIdをカーソルとして使用し、
+   * それより前（古い）のコメントを取得する。
+   * 別セッションでのコメント追加による重複取得を回避する。
    */
   const handleLoadMore = useCallback(async (): Promise<void> => {
-    const nextPage: number = currentPage + 1;
+    // 最後のコメントのIDをカーソルとして使用
+    const lastComment: ThreadComment | undefined =
+      allComments[allComments.length - 1];
+    if (!lastComment) return;
+
     setIsLoadingMore(true);
     try {
       const response: Response = await fetch(
-        `${BACKEND_URL}/api/v1/community/${artistId}/threads/${threadId}?page=${nextPage}&size=${COMMENT_PAGE_SIZE}`,
+        `${BACKEND_URL}/api/v1/community/${artistId}/threads/${threadId}?before=${lastComment.commentId}&size=${COMMENT_PAGE_SIZE}`,
       );
       if (!response.ok) {
         throw new Error(
@@ -105,7 +111,6 @@ export default function ThreadDetailPage(): ReactNode {
       }
       const data: ThreadDetailResponse = await response.json();
       setAllComments((prev) => [...prev, ...data.comments]);
-      setCurrentPage(nextPage);
       setThreadData(data);
     } catch (err) {
       const errorMessage: string =
@@ -114,7 +119,7 @@ export default function ThreadDetailPage(): ReactNode {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [artistId, threadId, currentPage]);
+  }, [artistId, threadId, allComments]);
 
   /**
    * FABクリック時の処理（ログイン状態に応じてモーダルまたはダイアログを表示）
@@ -193,9 +198,9 @@ export default function ThreadDetailPage(): ReactNode {
                         {formatRelativeDate(comment.createdAt)}
                       </span>
                     </div>
-                    {/* コメント内容（改行保持） */}
+                    {/* コメント内容（改行保持・長文折り返し） */}
                     <p
-                      className="mt-2 whitespace-pre-wrap text-sm text-gray-900 dark:text-zinc-50"
+                      className="mt-2 whitespace-pre-wrap break-words text-sm text-gray-900 dark:text-zinc-50"
                       data-testid={`comment-content-${comment.commentId}`}
                     >
                       {comment.content}

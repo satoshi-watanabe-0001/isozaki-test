@@ -145,9 +145,9 @@ class ThreadResourceTest {
                 "aimyon", THREAD_UUID_1, 1, 10))
                 .thenReturn(Optional.of(expectedResponse));
 
-        // When: スレッド詳細取得APIをUUID文字列で実行
+        // When: スレッド詳細取得APIをUUID文字列で実行（beforeなし＝オフセットベース）
         Response response = threadResource.getThreadDetail(
-                "aimyon", THREAD_UUID_1.toString(), 1, 10);
+                "aimyon", THREAD_UUID_1.toString(), 1, 10, null);
 
         // Then: HTTP 200 OKと正しいスレッド詳細が返却される
         assertEquals(Response.Status.OK.getStatusCode(),
@@ -179,7 +179,7 @@ class ThreadResourceTest {
 
         // When: 存在しないスレッドIDでスレッド詳細取得を実行
         Response response = threadResource.getThreadDetail(
-                "aimyon", unknownThread.toString(), 1, 10);
+                "aimyon", unknownThread.toString(), 1, 10, null);
 
         // Then: HTTP 404 Not Foundが返却される
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
@@ -199,7 +199,69 @@ class ThreadResourceTest {
     void shouldReturnBadRequestForInvalidThreadIdFormat() {
         // When: 不正なUUID形式でスレッド詳細取得を実行
         Response response = threadResource.getThreadDetail(
-                "aimyon", "invalid-uuid", 1, 10);
+                "aimyon", "invalid-uuid", 1, 10, null);
+
+        // Then: HTTP 400 Bad Requestが返却される
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(),
+                response.getStatus());
+    }
+
+    /**
+     * 【テスト対象】ThreadResource#getThreadDetail
+     * 【テストケース】beforeパラメータ指定時のカーソルベースページング
+     * 【期待結果】HTTP 200 OKとカーソルベースのコメントが返却される
+     * 【ビジネス要件】スレッド詳細API - カーソルベースページング
+     */
+    @Test
+    @DisplayName("スレッド詳細取得: beforeパラメータ指定時、カーソルベースで取得される")
+    void shouldReturnOkWithCursorBasedPagination() {
+        // Given: カーソルベースのスレッド詳細データが存在する
+        UUID beforeCommentId = UUID.fromString(
+                "01970000-2000-7000-8000-000000000010");
+        ThreadDetailResponse expectedResponse = new ThreadDetailResponse(
+                THREAD_UUID_1.toString(),
+                "テストスレッド", "テストユーザー",
+                Instant.parse("2025-04-13T10:00:00Z"),
+                List.of(new ThreadCommentResponse(
+                        "01970000-2000-7000-8000-000000000001",
+                        "古いコメント", "テストユーザー",
+                        Instant.parse("2025-04-13T09:00:00Z"))),
+                15L, 0, 10, 0
+        );
+        when(threadService.getThreadDetailBefore(
+                "aimyon", THREAD_UUID_1, beforeCommentId, 10))
+                .thenReturn(Optional.of(expectedResponse));
+
+        // When: beforeパラメータ付きでスレッド詳細取得APIを実行
+        Response response = threadResource.getThreadDetail(
+                "aimyon", THREAD_UUID_1.toString(), 1, 10,
+                beforeCommentId.toString());
+
+        // Then: HTTP 200 OKとカーソルベースの結果が返却される
+        assertEquals(Response.Status.OK.getStatusCode(),
+                response.getStatus());
+        ThreadDetailResponse body =
+                (ThreadDetailResponse) response.getEntity();
+        assertNotNull(body);
+        assertEquals(1, body.comments().size());
+        assertEquals("古いコメント", body.comments().get(0).content());
+        verify(threadService).getThreadDetailBefore(
+                "aimyon", THREAD_UUID_1, beforeCommentId, 10);
+    }
+
+    /**
+     * 【テスト対象】ThreadResource#getThreadDetail
+     * 【テストケース】不正なUUID形式のbeforeパラメータ
+     * 【期待結果】HTTP 400 Bad Requestが返却される
+     * 【ビジネス要件】スレッド詳細API - 不正なbeforeパラメータ
+     */
+    @Test
+    @DisplayName("スレッド詳細取得: 不正なbeforeパラメータの場合、400 Bad Requestが返される")
+    void shouldReturnBadRequestForInvalidBeforeParam() {
+        // When: 不正なUUID形式のbeforeパラメータでスレッド詳細取得を実行
+        Response response = threadResource.getThreadDetail(
+                "aimyon", THREAD_UUID_1.toString(), 1, 10,
+                "not-a-valid-uuid");
 
         // Then: HTTP 400 Bad Requestが返却される
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(),
