@@ -57,4 +57,6 @@ export interface MenuItem {
   label: string;
   /** メニューアイコン（絵文字またはアイコン名） */
   icon: string;
+  /** リンク先パス（未設定の場合はリンクなし） */
+  href?: string;
 }

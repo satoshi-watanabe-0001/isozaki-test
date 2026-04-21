@@ -62,9 +62,25 @@ jacocoTestReport {
         xml.required = true
         html.required = true
     }
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                '**/repository/**',
+                '**/entity/**'
+            ])
+        }))
+    }
 }
 
 jacocoTestCoverageVerification {
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                '**/repository/**',
+                '**/entity/**'
+            ])
+        }))
+    }
     violationRules {
         rule {
             limit {

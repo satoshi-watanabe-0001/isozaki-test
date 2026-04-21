@@ -27,7 +27,8 @@ public class UserRepository implements PanacheRepositoryBase<UserEntity, UUID> {
      * メールアドレスでユーザを検索する
      *
      * @param email 検索対象のメールアドレス（null不可）
-     * @return ユーザが見つかった場合はOptionalに包まれたエンティティ、見つからない場合は空のOptional
+     * @return ユーザが見つかった場合はOptionalに包まれたエンティティ、
+     *         見つからない場合は空のOptional
      */
     public Optional<UserEntity> findByEmail(String email) {
         return find("email", email).firstResultOptional();
@@ -41,5 +42,16 @@ public class UserRepository implements PanacheRepositoryBase<UserEntity, UUID> {
      */
     public boolean existsByEmail(String email) {
         return count("email", email) > 0;
+    }
+
+    /**
+     * ユーザIDでユーザを検索する
+     *
+     * @param userId 検索対象のユーザID（null不可）
+     * @return ユーザが見つかった場合はOptionalに包まれたエンティティ、
+     *         見つからない場合は空のOptional
+     */
+    public Optional<UserEntity> findByUserId(UUID userId) {
+        return find("userId", userId).firstResultOptional();
     }
 }

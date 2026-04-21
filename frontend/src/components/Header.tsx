@@ -9,7 +9,8 @@
  */
 "use client";
 
-import { useState, useCallback, type ReactNode } from "react";
+import { useState, useCallback, useEffect, type ReactNode } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import LoginModal from "@/components/LoginModal";
 
@@ -24,7 +25,20 @@ import LoginModal from "@/components/LoginModal";
  */
 export default function Header(): ReactNode {
   const { user, isLoggedIn, logout } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [canGoBack, setCanGoBack] = useState<boolean>(false);
+
+  /**
+   * ブラウザ履歴の有無を判定する
+   * パス変更のたびにwindow.history.lengthを再評価する
+   */
+  useEffect(() => {
+    setCanGoBack(
+      typeof window !== "undefined" && window.history.length > 1
+    );
+  }, [pathname]);
 
   /**
    * ログインモーダルを開く
@@ -47,14 +61,35 @@ export default function Header(): ReactNode {
     logout();
   }, [logout]);
 
+  /**
+   * 前のページに戻る処理
+   */
+  const handleGoBack = useCallback((): void => {
+    router.back();
+  }, [router]);
+
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white shadow-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-          {/* サイトタイトル */}
-          <h1 className="text-lg font-bold text-gray-900">
-            Devin-Test
-          </h1>
+          {/* 戻るアイコン + サイトタイトル */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleGoBack}
+              disabled={!canGoBack}
+              className="rounded-md p-1 text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"
+              aria-label="前のページに戻る"
+              data-testid="back-button"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+              </svg>
+            </button>
+            <h1 className="text-lg font-bold text-gray-900">
+              Devin-Test
+            </h1>
+          </div>
 
           {/* 認証エリア */}
           <div className="flex items-center gap-4">
