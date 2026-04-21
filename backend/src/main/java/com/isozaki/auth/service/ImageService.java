@@ -65,13 +65,15 @@ public class ImageService {
     private final S3Client s3Client;
     private final String bucket;
     private final String s3Endpoint;
+    private final String s3PublicEndpoint;
 
     /**
      * 画像サービスを初期化する
      *
      * @param commentImageRepository 画像リポジトリ
      * @param uuidService            UUID生成サービス
-     * @param s3Endpoint             S3/MinIOエンドポイント
+     * @param s3Endpoint             S3/MinIOエンドポイント（内部通信用）
+     * @param s3PublicEndpoint        S3/MinIOエンドポイント（ブラウザからのアクセス用）
      * @param bucket                 S3バケット名
      * @param accessKey              アクセスキー
      * @param secretKey              シークレットキー
@@ -82,6 +84,7 @@ public class ImageService {
             CommentImageRepository commentImageRepository,
             UuidService uuidService,
             @ConfigProperty(name = "s3.endpoint") String s3Endpoint,
+            @ConfigProperty(name = "s3.public-endpoint") String s3PublicEndpoint,
             @ConfigProperty(name = "s3.bucket") String bucket,
             @ConfigProperty(name = "s3.access-key") String accessKey,
             @ConfigProperty(name = "s3.secret-key") String secretKey,
@@ -90,13 +93,15 @@ public class ImageService {
         this.uuidService = uuidService;
         this.bucket = bucket;
         this.s3Endpoint = s3Endpoint;
+        this.s3PublicEndpoint = s3PublicEndpoint;
 
         StaticCredentialsProvider credentialsProvider =
                 StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(accessKey, secretKey));
 
+        // Pre-signed URLはブラウザからアクセスするため公開エンドポイントを使用
         this.s3Presigner = S3Presigner.builder()
-                .endpointOverride(URI.create(s3Endpoint))
+                .endpointOverride(URI.create(s3PublicEndpoint))
                 .region(Region.of(region))
                 .credentialsProvider(credentialsProvider)
                 .serviceConfiguration(
@@ -105,6 +110,7 @@ public class ImageService {
                                 .build())
                 .build();
 
+        // S3クライアントはサーバ間通信のため内部エンドポイントを使用
         this.s3Client = S3Client.builder()
                 .endpointOverride(URI.create(s3Endpoint))
                 .region(Region.of(region))
@@ -139,6 +145,7 @@ public class ImageService {
         this.s3Client = s3Client;
         this.bucket = bucket;
         this.s3Endpoint = s3Endpoint;
+        this.s3PublicEndpoint = s3Endpoint;
     }
 
     /**
@@ -299,7 +306,7 @@ public class ImageService {
      */
     private CommentImageResponse toImageResponse(CommentImageEntity entity) {
         String imageId = entity.imageId.toString();
-        String baseUrl = s3Endpoint + "/" + bucket;
+        String baseUrl = s3PublicEndpoint + "/" + bucket;
         return new CommentImageResponse(
                 imageId,
                 baseUrl + "/thumbnails/" + imageId + ".webp",
