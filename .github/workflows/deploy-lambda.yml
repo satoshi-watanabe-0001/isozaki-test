@@ -1,0 +1,54 @@
+# 画像処理Lambda自動デプロイ
+#
+# mainブランチへのマージ時に image-processor/ 配下の変更を検知し、
+# AWS SAM でLambda関数を自動デプロイする。
+#
+# 必要なGitHub Secrets:
+#   - AWS_ACCESS_KEY_ID: IAMアクセスキー
+#   - AWS_SECRET_ACCESS_KEY: IAMシークレットキー
+#   - AWS_REGION: デプロイ先リージョン（デフォルト: ap-northeast-1）
+#
+# @since 1.4
+
+name: Deploy Image Processor Lambda
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'image-processor/**'
+      - 'lambda/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリのチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.js 20.x のセットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: AWS SAM CLI のセットアップ
+        uses: aws-actions/setup-sam@v2
+
+      - name: AWS認証情報の設定
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-northeast-1' }}
+
+      - name: SAMビルド
+        run: sam build --template-file lambda/template.yaml
+
+      - name: SAMデプロイ
+        run: |
+          sam deploy \
+            --template-file lambda/template.yaml \
+            --config-file lambda/samconfig.toml \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset

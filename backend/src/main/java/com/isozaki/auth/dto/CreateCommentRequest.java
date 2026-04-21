@@ -2,15 +2,17 @@ package com.isozaki.auth.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.util.List;
 
 /**
  * コメント追加リクエストDTO
  *
  * <p>スレッドへのコメント追加時にフロントエンドから送信されるリクエスト。
- * コメント内容（最大200文字）を含む。</p>
+ * コメント内容（最大200文字）と任意の画像IDリスト（最大4件）を含む。</p>
  *
  * @param content   コメント内容（必須、最大200文字）
  * @param sessionId セッションID（認証用）
+ * @param imageIds  画像IDリスト（任意、最大4件、Pre-signed URL取得時に発行されたID）
  * @since 1.3
  */
 public record CreateCommentRequest(
@@ -19,6 +21,8 @@ public record CreateCommentRequest(
         String content,
 
         @NotBlank(message = "セッションIDは必須です")
-        String sessionId
+        String sessionId,
+
+        List<String> imageIds
 ) {
 }

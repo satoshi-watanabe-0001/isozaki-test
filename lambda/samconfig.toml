@@ -1,0 +1,24 @@
+# SAMデプロイ設定ファイル
+# sam deploy --guided で初回設定後、以降は sam deploy で自動適用される
+#
+# @since 1.4
+
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "isozaki-test-image-processor"
+resolve_s3 = true
+s3_prefix = "isozaki-test-image-processor"
+region = "ap-northeast-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "Environment=\"production\" ImageBucketName=\"isozaki-test-images\""
+
+[staging.deploy.parameters]
+stack_name = "isozaki-test-image-processor-staging"
+resolve_s3 = true
+s3_prefix = "isozaki-test-image-processor-staging"
+region = "ap-northeast-1"
+confirm_changeset = false
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "Environment=\"staging\" ImageBucketName=\"isozaki-test-images-staging\""

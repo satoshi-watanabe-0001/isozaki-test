@@ -35,6 +35,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -44,6 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -73,6 +75,9 @@ class ThreadServiceTest {
     @Mock
     private UuidService uuidService;
 
+    @Mock
+    private ImageService imageService;
+
     private ThreadService threadService;
 
     private static final UUID USER_UUID_1 =
@@ -94,13 +99,18 @@ class ThreadServiceTest {
 
     @BeforeEach
     void setUp() {
+        org.mockito.Mockito.lenient()
+                .when(imageService.getImagesByCommentIds(anyList()))
+                .thenReturn(Map.of());
+
         threadService = new ThreadService(
                 threadRepository,
                 threadCommentRepository,
                 artistRepository,
                 sessionService,
                 userRepository,
-                uuidService);
+                uuidService,
+                imageService);
     }
 
     /**
@@ -698,7 +708,7 @@ class ThreadServiceTest {
         when(threadRepository.findById(unknownThread)).thenReturn(null);
 
         CreateCommentRequest request =
-                new CreateCommentRequest("コメント", VALID_SESSION);
+                new CreateCommentRequest("コメント", VALID_SESSION, null);
 
         Optional<ThreadCommentResponse> result =
                 threadService.addComment(
@@ -723,7 +733,7 @@ class ThreadServiceTest {
                 .thenReturn(thread);
 
         CreateCommentRequest request =
-                new CreateCommentRequest("コメント", VALID_SESSION);
+                new CreateCommentRequest("コメント", VALID_SESSION, null);
 
         Optional<ThreadCommentResponse> result =
                 threadService.addComment(
@@ -751,7 +761,7 @@ class ThreadServiceTest {
 
         CreateCommentRequest request =
                 new CreateCommentRequest(
-                        "コメント", INVALID_SESSION);
+                        "コメント", INVALID_SESSION, null);
 
         Optional<ThreadCommentResponse> result =
                 threadService.addComment(
@@ -785,7 +795,7 @@ class ThreadServiceTest {
 
         CreateCommentRequest request =
                 new CreateCommentRequest(
-                        "新しいコメント", VALID_SESSION);
+                        "新しいコメント", VALID_SESSION, null);
 
         Optional<ThreadCommentResponse> result =
                 threadService.addComment(
