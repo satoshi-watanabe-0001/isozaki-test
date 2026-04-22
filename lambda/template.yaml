@@ -37,6 +37,8 @@ Resources:
   # 画像処理Lambda関数
   ImageProcessorFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
     Properties:
       FunctionName: !Sub "isozaki-test-image-processor-${Environment}"
       CodeUri: ../image-processor/
