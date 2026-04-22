@@ -31,9 +31,16 @@ import java.net.URL;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -341,6 +348,132 @@ class ImageServiceTest {
 
         verify(s3Client, never()).deleteObject(any(DeleteObjectRequest.class));
         verify(commentImageRepository, never()).delete(any());
+    }
+
+    // ========== buildCredentialsProvider テスト ==========
+
+    /**
+     * 【テスト対象】ImageService#buildCredentialsProvider
+     * 【テストケース】AccessKey/SecretKeyが両方指定されている場合
+     * 【期待結果】StaticCredentialsProviderが返却される
+     * 【ビジネス要件】ローカル開発環境での明示的認証情報指定
+     */
+    @Test
+    @DisplayName("認証情報構築: AccessKey/SecretKey指定時はStaticCredentialsProvider")
+    void shouldReturnStaticCredentialsWhenBothKeysProvided() {
+        AwsCredentialsProvider provider = ImageService.buildCredentialsProvider(
+                Optional.of("testAccessKey"), Optional.of("testSecretKey"));
+
+        assertTrue(provider instanceof software.amazon.awssdk.auth.credentials.StaticCredentialsProvider);
+    }
+
+    /**
+     * 【テスト対象】ImageService#buildCredentialsProvider
+     * 【テストケース】AccessKeyのみ指定されている場合
+     * 【期待結果】DefaultCredentialsProviderが返却される（IAMロール認証）
+     * 【ビジネス要件】AWS環境でのIAMロール認証
+     */
+    @Test
+    @DisplayName("認証情報構築: AccessKeyのみの場合はDefaultCredentialsProvider")
+    void shouldReturnDefaultCredentialsWhenOnlyAccessKey() {
+        AwsCredentialsProvider provider = ImageService.buildCredentialsProvider(
+                Optional.of("testAccessKey"), Optional.empty());
+
+        assertTrue(provider instanceof DefaultCredentialsProvider);
+    }
+
+    /**
+     * 【テスト対象】ImageService#buildCredentialsProvider
+     * 【テストケース】両方未指定の場合
+     * 【期待結果】DefaultCredentialsProviderが返却される（IAMロール認証）
+     * 【ビジネス要件】AWS環境でのIAMロール認証
+     */
+    @Test
+    @DisplayName("認証情報構築: 両方未指定の場合はDefaultCredentialsProvider")
+    void shouldReturnDefaultCredentialsWhenNoKeys() {
+        AwsCredentialsProvider provider = ImageService.buildCredentialsProvider(
+                Optional.empty(), Optional.empty());
+
+        assertTrue(provider instanceof DefaultCredentialsProvider);
+    }
+
+    // ========== buildS3Client テスト ==========
+
+    /**
+     * 【テスト対象】ImageService#buildS3Client
+     * 【テストケース】エンドポイント未指定の場合
+     * 【期待結果】S3Clientが正常に構築される（SDKデフォルトエンドポイント）
+     * 【ビジネス要件】AWS環境でのS3クライアント構築
+     */
+    @Test
+    @DisplayName("S3クライアント構築: エンドポイント未指定でSDKデフォルト使用")
+    void shouldBuildS3ClientWithoutEndpoint() {
+        AwsCredentialsProvider provider = StaticCredentialsProvider.create(
+                AwsBasicCredentials.create("test", "test"));
+
+        S3Client client = ImageService.buildS3Client("ap-northeast-1", provider, Optional.empty());
+
+        assertNotNull(client);
+        client.close();
+    }
+
+    /**
+     * 【テスト対象】ImageService#buildS3Client
+     * 【テストケース】エンドポイント指定ありの場合
+     * 【期待結果】S3Clientがカスタムエンドポイントで構築される
+     * 【ビジネス要件】ローカル開発環境でのMinIO接続
+     */
+    @Test
+    @DisplayName("S3クライアント構築: エンドポイント指定でカスタムエンドポイント使用")
+    void shouldBuildS3ClientWithEndpoint() {
+        AwsCredentialsProvider provider = StaticCredentialsProvider.create(
+                AwsBasicCredentials.create("test", "test"));
+
+        S3Client client = ImageService.buildS3Client(
+                "ap-northeast-1", provider, Optional.of("http://localhost:9000"));
+
+        assertNotNull(client);
+        client.close();
+    }
+
+    // ========== buildS3Presigner テスト ==========
+
+    /**
+     * 【テスト対象】ImageService#buildS3Presigner
+     * 【テストケース】公開エンドポイント未指定の場合
+     * 【期待結果】S3Presignerが正常に構築される（SDKデフォルト）
+     * 【ビジネス要件】AWS環境でのPre-signed URL生成
+     */
+    @Test
+    @DisplayName("S3 Presigner構築: 公開エンドポイント未指定でSDKデフォルト使用")
+    void shouldBuildS3PresignerWithoutEndpoint() {
+        AwsCredentialsProvider provider = StaticCredentialsProvider.create(
+                AwsBasicCredentials.create("test", "test"));
+
+        S3Presigner presigner = ImageService.buildS3Presigner(
+                "ap-northeast-1", provider, Optional.empty());
+
+        assertNotNull(presigner);
+        presigner.close();
+    }
+
+    /**
+     * 【テスト対象】ImageService#buildS3Presigner
+     * 【テストケース】公開エンドポイント指定ありの場合
+     * 【期待結果】S3Presignerがカスタムエンドポイントで構築される
+     * 【ビジネス要件】ローカル開発環境でのMinIO向けPre-signed URL生成
+     */
+    @Test
+    @DisplayName("S3 Presigner構築: 公開エンドポイント指定でカスタムエンドポイント使用")
+    void shouldBuildS3PresignerWithEndpoint() {
+        AwsCredentialsProvider provider = StaticCredentialsProvider.create(
+                AwsBasicCredentials.create("test", "test"));
+
+        S3Presigner presigner = ImageService.buildS3Presigner(
+                "ap-northeast-1", provider, Optional.of("http://localhost:9000"));
+
+        assertNotNull(presigner);
+        presigner.close();
     }
 
     // ========== ヘルパーメソッド ==========

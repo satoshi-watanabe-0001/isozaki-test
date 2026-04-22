@@ -121,20 +121,39 @@ public class ImageService {
         AwsCredentialsProvider credentialsProvider = buildCredentialsProvider(effectiveAccessKey, effectiveSecretKey);
 
         // Pre-signed URLはブラウザからアクセスするため公開エンドポイントを使用
+        this.s3Presigner = buildS3Presigner(region, credentialsProvider, effectivePublicEndpoint);
+
+        // S3クライアントはサーバ間通信のため内部エンドポイントを使用
+        this.s3Client = buildS3Client(region, credentialsProvider, effectiveEndpoint);
+    }
+
+    /**
+     * S3 Presignerを構築する
+     *
+     * <p>公開エンドポイントが指定されている場合はオーバーライドし、
+     * パスベースアクセスを有効にする（ローカル開発用MinIO対応）。
+     * AWS環境ではエンドポイント未指定でSDKデフォルトを使用する。</p>
+     *
+     * @param region              リージョン
+     * @param credentialsProvider 認証情報プロバイダ
+     * @param publicEndpoint      公開エンドポイント（Optional）
+     * @return S3 Presigner
+     */
+    static S3Presigner buildS3Presigner(
+            String region,
+            AwsCredentialsProvider credentialsProvider,
+            Optional<String> publicEndpoint) {
         S3Presigner.Builder presignerBuilder = S3Presigner.builder()
                 .region(Region.of(region))
                 .credentialsProvider(credentialsProvider);
-        effectivePublicEndpoint.ifPresent(ep -> {
+        publicEndpoint.ifPresent(ep -> {
             presignerBuilder.endpointOverride(URI.create(ep));
             presignerBuilder.serviceConfiguration(
                     software.amazon.awssdk.services.s3.S3Configuration.builder()
                             .pathStyleAccessEnabled(true)
                             .build());
         });
-        this.s3Presigner = presignerBuilder.build();
-
-        // S3クライアントはサーバ間通信のため内部エンドポイントを使用
-        this.s3Client = buildS3Client(region, credentialsProvider, effectiveEndpoint);
+        return presignerBuilder.build();
     }
 
     /**
@@ -149,7 +168,7 @@ public class ImageService {
      * @param endpoint            エンドポイント（Optional）
      * @return S3クライアント
      */
-    private static S3Client buildS3Client(
+    static S3Client buildS3Client(
             String region,
             AwsCredentialsProvider credentialsProvider,
             Optional<String> endpoint) {
@@ -205,7 +224,7 @@ public class ImageService {
      * @param secretKey シークレットキー（Optional）
      * @return 認証情報プロバイダ
      */
-    private static AwsCredentialsProvider buildCredentialsProvider(
+    static AwsCredentialsProvider buildCredentialsProvider(
             Optional<String> accessKey, Optional<String> secretKey) {
         if (accessKey.isPresent() && secretKey.isPresent()) {
             return StaticCredentialsProvider.create(
