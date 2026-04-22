@@ -27,22 +27,31 @@ const DISPLAY_QUALITY = 85;
 /**
  * S3クライアントを生成する
  *
+ * <p>AWS環境ではendpoint/accessKeyId/secretAccessKeyを未指定とし、
+ * Lambda実行ロール/ECSタスクロールから認証情報を自動取得する。
+ * ローカル開発環境ではMinIOのエンドポイントとアクセスキーを指定する。</p>
+ *
  * @param {object} options - S3クライアント設定
- * @param {string} options.endpoint - S3/MinIOエンドポイント
+ * @param {string} [options.endpoint] - S3/MinIOエンドポイント（ローカル開発用、AWS環境では未指定）
  * @param {string} options.region - AWSリージョン
- * @param {string} options.accessKeyId - アクセスキーID
- * @param {string} options.secretAccessKey - シークレットアクセスキー
+ * @param {string} [options.accessKeyId] - アクセスキーID（ローカル開発用、AWS環境では未指定）
+ * @param {string} [options.secretAccessKey] - シークレットアクセスキー（ローカル開発用、AWS環境では未指定）
  * @returns {S3Client} S3クライアント
  */
 export function createS3Client({ endpoint, region, accessKeyId, secretAccessKey }) {
   const config = {
     region: region || "ap-northeast-1",
-    credentials: {
-      accessKeyId: accessKeyId || "minioadmin",
-      secretAccessKey: secretAccessKey || "minioadmin",
-    },
   };
 
+  // AccessKey/SecretKeyが両方指定されている場合のみ明示的に設定（ローカル開発用）
+  if (accessKeyId && secretAccessKey) {
+    config.credentials = {
+      accessKeyId,
+      secretAccessKey,
+    };
+  }
+
+  // エンドポイントが指定されている場合のみオーバーライド（ローカル開発用）
   if (endpoint) {
     config.endpoint = endpoint;
     config.forcePathStyle = true;

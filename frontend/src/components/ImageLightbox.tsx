@@ -1,17 +1,19 @@
 /**
  * 画像ライトボックスコンポーネント
  *
- * Radix UI Dialogを使用した画像拡大表示モーダル。
- * 表示用画像（1200px幅WebP）を表示する。
- * 複数画像がある場合は左右ナビゲーションで切り替え可能。
- * ×ボタンおよびオーバーレイクリックで閉じることができる。
+ * react-image-galleryを使用した画像拡大表示モーダル。
+ * 表示用画像（1200px幅WebP）をギャラリー形式で表示する。
+ * 複数画像がある場合はスワイプ・矢印キーで切り替え可能。
+ * オーバーレイクリックまたは×ボタンで閉じることができる。
  *
  * @since 1.4
  */
 "use client";
 
-import { useState, useCallback, useEffect, type ReactNode } from "react";
+import { useCallback, type ReactNode } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
+import ImageGallery from "react-image-gallery";
+import "react-image-gallery/styles/image-gallery.css";
 import type { CommentImage } from "@/types/thread";
 
 /**
@@ -41,51 +43,28 @@ export default function ImageLightbox({
   isOpen,
   onClose,
 }: ImageLightboxProps): ReactNode {
-  const [currentIndex, setCurrentIndex] = useState<number>(initialIndex);
-
-  /** initialIndexが変わったら同期する */
-  useEffect(() => {
-    setCurrentIndex(initialIndex);
-  }, [initialIndex]);
-
-  /** 前の画像に移動 */
-  const handlePrev = useCallback((): void => {
-    setCurrentIndex((prev) =>
-      prev > 0 ? prev - 1 : images.length - 1,
-    );
-  }, [images.length]);
-
-  /** 次の画像に移動 */
-  const handleNext = useCallback((): void => {
-    setCurrentIndex((prev) =>
-      prev < images.length - 1 ? prev + 1 : 0,
-    );
-  }, [images.length]);
-
-  /** キーボードナビゲーション */
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === "ArrowLeft") {
-        handlePrev();
-      } else if (e.key === "ArrowRight") {
-        handleNext();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, handlePrev, handleNext]);
+  /** Dialogの開閉状態変更ハンドラ */
+  const handleOpenChange = useCallback(
+    (open: boolean): void => {
+      if (!open) onClose();
+    },
+    [onClose],
+  );
 
   if (!images || images.length === 0) {
     return null;
   }
 
-  const currentImage: CommentImage = images[currentIndex];
+  /** react-image-gallery用のアイテムリスト */
+  const galleryItems = images.map((image, index) => ({
+    original: image.displayUrl,
+    thumbnail: image.thumbnailUrl,
+    originalAlt: `画像${index + 1}/${images.length}`,
+    thumbnailAlt: `サムネイル${index + 1}`,
+  }));
 
   return (
-    <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog.Root open={isOpen} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay
           className="fixed inset-0 z-[60] bg-black/80"
@@ -95,11 +74,13 @@ export default function ImageLightbox({
           className="fixed inset-0 z-[60] flex items-center justify-center p-4"
           data-testid="lightbox-modal"
         >
+          <Dialog.Title className="sr-only">画像拡大表示</Dialog.Title>
+
           {/* 閉じるボタン */}
           <Dialog.Close asChild>
             <button
               type="button"
-              className="absolute right-4 top-4 z-10 rounded-full bg-black/50 p-2 text-white hover:bg-black/70"
+              className="absolute right-4 top-4 z-[70] rounded-full bg-black/50 p-2 text-white hover:bg-black/70"
               aria-label="閉じる"
               data-testid="lightbox-close"
             >
@@ -109,66 +90,20 @@ export default function ImageLightbox({
             </button>
           </Dialog.Close>
 
-          {/* 前へボタン */}
-          {images.length > 1 && (
-            <button
-              type="button"
-              onClick={handlePrev}
-              className="absolute left-4 z-10 rounded-full bg-black/50 p-2 text-white hover:bg-black/70"
-              aria-label="前の画像"
-              data-testid="lightbox-prev"
-            >
-              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
-              </svg>
-            </button>
-          )}
-
-          {/* 画像表示 */}
-          <Dialog.Title className="sr-only">画像拡大表示</Dialog.Title>
-          <img
-            src={currentImage.displayUrl}
-            alt={`画像${currentIndex + 1}/${images.length}`}
-            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
-            data-testid="lightbox-image"
-          />
-
-          {/* 次へボタン */}
-          {images.length > 1 && (
-            <button
-              type="button"
-              onClick={handleNext}
-              className="absolute right-4 z-10 rounded-full bg-black/50 p-2 text-white hover:bg-black/70"
-              aria-label="次の画像"
-              data-testid="lightbox-next"
-            >
-              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
-              </svg>
-            </button>
-          )}
-
-          {/* インジケーター */}
-          {images.length > 1 && (
-            <div
-              className="absolute bottom-4 flex gap-1"
-              data-testid="lightbox-indicator"
-            >
-              {images.map((img, index) => (
-                <button
-                  key={img.imageId}
-                  type="button"
-                  onClick={() => setCurrentIndex(index)}
-                  className={`h-2 w-2 rounded-full ${
-                    index === currentIndex
-                      ? "bg-white"
-                      : "bg-white/50"
-                  }`}
-                  aria-label={`画像${index + 1}を表示`}
-                />
-              ))}
-            </div>
-          )}
+          {/* react-image-gallery */}
+          <div className="w-full max-w-[90vw]" data-testid="lightbox-gallery">
+            <ImageGallery
+              items={galleryItems}
+              startIndex={initialIndex}
+              showPlayButton={false}
+              showFullscreenButton={false}
+              showThumbnails={images.length > 1}
+              showBullets={false}
+              showNav={images.length > 1}
+              slideDuration={300}
+              lazyLoad={true}
+            />
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

@@ -5,6 +5,11 @@
  * S3/MinIOへのPre-signed URL生成、PENDING/CONFIRMEDステータス管理、
  * 定期クリーンアップ処理を提供する。</p>
  *
+ * <p>AWS環境ではIAMロール認証（DefaultCredentialsProvider）を使用し、
+ * ローカル開発環境ではAccessKey/SecretKeyによる認証を使用する。
+ * s3.endpointおよびs3.public-endpointはローカル開発専用であり、
+ * AWS環境では未設定とすることでSDKのデフォルトエンドポイントを使用する。</p>
+ *
  * @since 1.4
  */
 
@@ -24,11 +29,14 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -64,61 +72,101 @@ public class ImageService {
     private final S3Presigner s3Presigner;
     private final S3Client s3Client;
     private final String bucket;
-    private final String s3Endpoint;
-    private final String s3PublicEndpoint;
+    private final String imageBaseUrl;
 
     /**
      * 画像サービスを初期化する
      *
+     * <p>AWS環境ではIAMロール認証（DefaultCredentialsProvider）を使用し、
+     * s3.endpointおよびs3.public-endpointは未設定でSDKのデフォルトを使用する。
+     * 画像公開URLはs3.image-base-urlで指定し、CloudFrontエンドポイント等を設定可能。</p>
+     *
      * @param commentImageRepository 画像リポジトリ
      * @param uuidService            UUID生成サービス
-     * @param s3Endpoint             S3/MinIOエンドポイント（内部通信用）
-     * @param s3PublicEndpoint        S3/MinIOエンドポイント（ブラウザからのアクセス用）
+     * @param s3Endpoint             S3/MinIOエンドポイント（ローカル開発用、AWS環境では未設定）
+     * @param s3PublicEndpoint        S3/MinIO公開エンドポイント（ローカル開発用、AWS環境では未設定）
+     * @param imageBaseUrl           画像公開ベースURL（CloudFront等、未設定時はs3PublicEndpoint/bucketを使用）
      * @param bucket                 S3バケット名
-     * @param accessKey              アクセスキー
-     * @param secretKey              シークレットキー
+     * @param accessKey              アクセスキー（ローカル開発用、AWS環境では未設定）
+     * @param secretKey              シークレットキー（ローカル開発用、AWS環境では未設定）
      * @param region                 リージョン
      */
     @Inject
     public ImageService(
             CommentImageRepository commentImageRepository,
             UuidService uuidService,
-            @ConfigProperty(name = "s3.endpoint") String s3Endpoint,
-            @ConfigProperty(name = "s3.public-endpoint") String s3PublicEndpoint,
+            @ConfigProperty(name = "s3.endpoint") Optional<String> s3Endpoint,
+            @ConfigProperty(name = "s3.public-endpoint") Optional<String> s3PublicEndpoint,
+            @ConfigProperty(name = "s3.image-base-url") Optional<String> imageBaseUrl,
             @ConfigProperty(name = "s3.bucket") String bucket,
-            @ConfigProperty(name = "s3.access-key") String accessKey,
-            @ConfigProperty(name = "s3.secret-key") String secretKey,
+            @ConfigProperty(name = "s3.access-key") Optional<String> accessKey,
+            @ConfigProperty(name = "s3.secret-key") Optional<String> secretKey,
             @ConfigProperty(name = "s3.region") String region) {
         this.commentImageRepository = commentImageRepository;
         this.uuidService = uuidService;
         this.bucket = bucket;
-        this.s3Endpoint = s3Endpoint;
-        this.s3PublicEndpoint = s3PublicEndpoint;
 
-        StaticCredentialsProvider credentialsProvider =
-                StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(accessKey, secretKey));
+        // 空文字列をOptional.empty()に変換（Quarkusの${VAR:}は空文字列を返すため）
+        Optional<String> effectiveEndpoint = s3Endpoint.filter(s -> !s.isBlank());
+        Optional<String> effectivePublicEndpoint = s3PublicEndpoint.filter(s -> !s.isBlank());
+        Optional<String> effectiveImageBaseUrl = imageBaseUrl.filter(s -> !s.isBlank());
+        Optional<String> effectiveAccessKey = accessKey.filter(s -> !s.isBlank());
+        Optional<String> effectiveSecretKey = secretKey.filter(s -> !s.isBlank());
+
+        // 画像公開ベースURLの決定（優先順位: image-base-url > public-endpoint/bucket）
+        this.imageBaseUrl = effectiveImageBaseUrl.orElseGet(() ->
+                effectivePublicEndpoint.map(ep -> ep + "/" + bucket).orElse(""));
+
+        // 認証情報の構築（AccessKey/SecretKeyが両方設定されていればBasic認証、それ以外はIAMロール認証）
+        AwsCredentialsProvider credentialsProvider = buildCredentialsProvider(effectiveAccessKey, effectiveSecretKey);
 
         // Pre-signed URLはブラウザからアクセスするため公開エンドポイントを使用
-        this.s3Presigner = S3Presigner.builder()
-                .endpointOverride(URI.create(s3PublicEndpoint))
+        S3Presigner.Builder presignerBuilder = S3Presigner.builder()
                 .region(Region.of(region))
-                .credentialsProvider(credentialsProvider)
-                .serviceConfiguration(
-                        software.amazon.awssdk.services.s3.S3Configuration.builder()
-                                .pathStyleAccessEnabled(true)
-                                .build())
-                .build();
+                .credentialsProvider(credentialsProvider);
+        effectivePublicEndpoint.ifPresent(ep -> {
+            presignerBuilder.endpointOverride(URI.create(ep));
+            presignerBuilder.serviceConfiguration(
+                    software.amazon.awssdk.services.s3.S3Configuration.builder()
+                            .pathStyleAccessEnabled(true)
+                            .build());
+        });
+        this.s3Presigner = presignerBuilder.build();
 
         // S3クライアントはサーバ間通信のため内部エンドポイントを使用
-        this.s3Client = S3Client.builder()
-                .endpointOverride(URI.create(s3Endpoint))
+        this.s3Client = buildS3Client(region, credentialsProvider, effectiveEndpoint);
+    }
+
+    /**
+     * S3クライアントを構築する
+     *
+     * <p>エンドポイントが指定されている場合はオーバーライドし、
+     * パスベースアクセスを有効にする（ローカル開発用MinIO対応）。
+     * AWS環境ではエンドポイント未指定でSDKデフォルトを使用する。</p>
+     *
+     * @param region              リージョン
+     * @param credentialsProvider 認証情報プロバイダ
+     * @param endpoint            エンドポイント（Optional）
+     * @return S3クライアント
+     */
+    private static S3Client buildS3Client(
+            String region,
+            AwsCredentialsProvider credentialsProvider,
+            Optional<String> endpoint) {
+        if (endpoint.isPresent()) {
+            return S3Client.builder()
+                    .region(Region.of(region))
+                    .credentialsProvider(credentialsProvider)
+                    .endpointOverride(URI.create(endpoint.get()))
+                    .serviceConfiguration(
+                            software.amazon.awssdk.services.s3.S3Configuration.builder()
+                                    .pathStyleAccessEnabled(true)
+                                    .build())
+                    .build();
+        }
+        return S3Client.builder()
                 .region(Region.of(region))
                 .credentialsProvider(credentialsProvider)
-                .serviceConfiguration(
-                        software.amazon.awssdk.services.s3.S3Configuration.builder()
-                                .pathStyleAccessEnabled(true)
-                                .build())
                 .build();
     }
 
@@ -130,7 +178,7 @@ public class ImageService {
      * @param s3Presigner            S3 Presigner
      * @param s3Client               S3クライアント
      * @param bucket                 バケット名
-     * @param s3Endpoint             エンドポイント
+     * @param imageBaseUrl           画像公開ベースURL
      */
     ImageService(
             CommentImageRepository commentImageRepository,
@@ -138,14 +186,32 @@ public class ImageService {
             S3Presigner s3Presigner,
             S3Client s3Client,
             String bucket,
-            String s3Endpoint) {
+            String imageBaseUrl) {
         this.commentImageRepository = commentImageRepository;
         this.uuidService = uuidService;
         this.s3Presigner = s3Presigner;
         this.s3Client = s3Client;
         this.bucket = bucket;
-        this.s3Endpoint = s3Endpoint;
-        this.s3PublicEndpoint = s3Endpoint;
+        this.imageBaseUrl = imageBaseUrl;
+    }
+
+    /**
+     * 認証情報プロバイダを構築する
+     *
+     * <p>AccessKey/SecretKeyが両方設定されている場合はStaticCredentialsProviderを使用し、
+     * それ以外の場合はDefaultCredentialsProviderを使用する（IAMロール認証）。</p>
+     *
+     * @param accessKey アクセスキー（Optional）
+     * @param secretKey シークレットキー（Optional）
+     * @return 認証情報プロバイダ
+     */
+    private static AwsCredentialsProvider buildCredentialsProvider(
+            Optional<String> accessKey, Optional<String> secretKey) {
+        if (accessKey.isPresent() && secretKey.isPresent()) {
+            return StaticCredentialsProvider.create(
+                    AwsBasicCredentials.create(accessKey.get(), secretKey.get()));
+        }
+        return DefaultCredentialsProvider.create();
     }
 
     /**
@@ -301,16 +367,19 @@ public class ImageService {
     /**
      * 画像エンティティをレスポンスDTOに変換する
      *
+     * <p>画像公開ベースURLにはs3.image-base-urlを使用する。
+     * AWS環境ではCloudFrontのURLが設定され、ローカル開発環境では
+     * s3.public-endpoint/bucketが使用される。</p>
+     *
      * @param entity 画像エンティティ
      * @return 画像レスポンスDTO
      */
     private CommentImageResponse toImageResponse(CommentImageEntity entity) {
         String imageId = entity.imageId.toString();
-        String baseUrl = s3PublicEndpoint + "/" + bucket;
         return new CommentImageResponse(
                 imageId,
-                baseUrl + "/thumbnails/" + imageId + ".webp",
-                baseUrl + "/display/" + imageId + ".webp"
+                imageBaseUrl + "/thumbnails/" + imageId + ".webp",
+                imageBaseUrl + "/display/" + imageId + ".webp"
         );
     }
 

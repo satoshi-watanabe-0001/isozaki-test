@@ -74,7 +74,7 @@ class ImageServiceTest {
     private static final UUID IMAGE_UUID_2 =
             UUID.fromString("01970000-3000-7000-8000-000000000002");
     private static final String BUCKET = "images";
-    private static final String ENDPOINT = "http://minio:9000";
+    private static final String IMAGE_BASE_URL = "http://localhost:9000/images";
 
     @BeforeEach
     void setUp() {
@@ -84,7 +84,7 @@ class ImageServiceTest {
                 s3Presigner,
                 s3Client,
                 BUCKET,
-                ENDPOINT);
+                IMAGE_BASE_URL);
     }
 
     // ========== generateUploadUrls テスト ==========

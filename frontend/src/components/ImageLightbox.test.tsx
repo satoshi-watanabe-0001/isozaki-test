@@ -1,12 +1,32 @@
 /**
  * 画像ライトボックスコンポーネントの単体テスト
  *
- * ライトボックスの表示、ナビゲーション、閉じる操作をテストする。
+ * react-image-galleryを使用したライトボックスの表示、閉じる操作をテストする。
  */
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import ImageLightbox from "@/components/ImageLightbox";
 import type { CommentImage } from "@/types/thread";
+
+// react-image-galleryのモック
+vi.mock("react-image-gallery", () => ({
+  default: ({ items, startIndex, showNav, showThumbnails }: {
+    items: { original: string; thumbnail: string; originalAlt: string; thumbnailAlt: string }[];
+    startIndex: number;
+    showNav: boolean;
+    showThumbnails: boolean;
+  }) => (
+    <div data-testid="image-gallery-mock">
+      <img
+        src={items[startIndex]?.original}
+        alt={items[startIndex]?.originalAlt}
+        data-testid="lightbox-image"
+      />
+      {showNav && <span data-testid="gallery-nav">ナビゲーション</span>}
+      {showThumbnails && <span data-testid="gallery-thumbnails">サムネイル</span>}
+    </div>
+  ),
+}));
 
 describe("ImageLightbox", () => {
   const mockImages: CommentImage[] = [
@@ -30,7 +50,7 @@ describe("ImageLightbox", () => {
   /**
    * 【テスト対象】ImageLightbox
    * 【テストケース】ライトボックスが開いている場合
-   * 【期待結果】画像とナビゲーションが表示される
+   * 【期待結果】ギャラリーと閉じるボタンが表示される
    * 【ビジネス要件】画像拡大表示
    */
   it("ライトボックスが正しく表示されること", () => {
@@ -44,6 +64,7 @@ describe("ImageLightbox", () => {
     );
 
     expect(screen.getByTestId("lightbox-modal")).toBeInTheDocument();
+    expect(screen.getByTestId("lightbox-gallery")).toBeInTheDocument();
     expect(screen.getByTestId("lightbox-image")).toBeInTheDocument();
     expect(screen.getByTestId("lightbox-close")).toBeInTheDocument();
   });
@@ -51,7 +72,7 @@ describe("ImageLightbox", () => {
   /**
    * 【テスト対象】ImageLightbox
    * 【テストケース】複数画像時のナビゲーション表示
-   * 【期待結果】前後ボタンとインジケーターが表示される
+   * 【期待結果】ギャラリーナビゲーションとサムネイルが表示される
    * 【ビジネス要件】複数画像の切り替え
    */
   it("複数画像時にナビゲーションが表示されること", () => {
@@ -64,15 +85,14 @@ describe("ImageLightbox", () => {
       />,
     );
 
-    expect(screen.getByTestId("lightbox-prev")).toBeInTheDocument();
-    expect(screen.getByTestId("lightbox-next")).toBeInTheDocument();
-    expect(screen.getByTestId("lightbox-indicator")).toBeInTheDocument();
+    expect(screen.getByTestId("gallery-nav")).toBeInTheDocument();
+    expect(screen.getByTestId("gallery-thumbnails")).toBeInTheDocument();
   });
 
   /**
    * 【テスト対象】ImageLightbox
    * 【テストケース】1枚画像時のナビゲーション非表示
-   * 【期待結果】ナビゲーションボタンが非表示
+   * 【期待結果】ギャラリーナビゲーションとサムネイルが非表示
    * 【ビジネス要件】1枚画像ではナビゲーション不要
    */
   it("1枚画像時にナビゲーションが非表示であること", () => {
@@ -85,8 +105,8 @@ describe("ImageLightbox", () => {
       />,
     );
 
-    expect(screen.queryByTestId("lightbox-prev")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("lightbox-next")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("gallery-nav")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("gallery-thumbnails")).not.toBeInTheDocument();
   });
 
   /**
@@ -136,7 +156,7 @@ describe("ImageLightbox", () => {
    * 【ビジネス要件】画像なし時の安全な処理
    */
   it("空の画像リストで何も表示されないこと", () => {
-    const { container } = render(
+    render(
       <ImageLightbox
         images={[]}
         initialIndex={0}
@@ -146,5 +166,25 @@ describe("ImageLightbox", () => {
     );
 
     expect(screen.queryByTestId("lightbox-modal")).not.toBeInTheDocument();
+  });
+
+  /**
+   * 【テスト対象】ImageLightbox
+   * 【テストケース】initialIndexが正しく設定される
+   * 【期待結果】指定インデックスの画像が表示される
+   * 【ビジネス要件】クリックした画像からギャラリーを開始
+   */
+  it("initialIndexが正しく反映されること", () => {
+    render(
+      <ImageLightbox
+        images={mockImages}
+        initialIndex={1}
+        isOpen={true}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const image = screen.getByTestId("lightbox-image");
+    expect(image).toHaveAttribute("src", mockImages[1].displayUrl);
   });
 });

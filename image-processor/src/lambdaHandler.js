@@ -4,16 +4,20 @@
  * S3 PUTイベントを受信し、共通画像処理ロジック（imageProcessor）を呼び出す。
  * AWS SAMテンプレートで Handler: src/lambdaHandler.handler として指定される。
  *
+ * AWS環境ではLambda実行ロールから認証情報を自動取得するため、
+ * AccessKey/SecretKeyの明示的な指定は不要。
+ *
  * @since 1.4
  */
 
 import { createS3Client, processImage } from "./imageProcessor.js";
 
-/** S3クライアント（Lambda起動時に1回だけ初期化） */
+/**
+ * S3クライアント（Lambda起動時に1回だけ初期化）
+ * endpointとcredentials未指定でSDKデフォルト（IAMロール認証）を使用
+ */
 const s3Client = createS3Client({
   region: process.env.AWS_REGION || "ap-northeast-1",
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
 });
 
 /**
