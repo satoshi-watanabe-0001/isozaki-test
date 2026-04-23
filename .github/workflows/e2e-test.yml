@@ -23,7 +23,9 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Docker Composeでサービスを起動
-        run: docker compose up -d --build --wait
+        run: |
+          docker compose up -d --build --wait backend frontend image-processor
+          docker compose up minio-init
         timeout-minutes: 10
 
       - name: サービスの起動状態を確認
