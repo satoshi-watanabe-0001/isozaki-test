@@ -1,11 +1,13 @@
 /**
  * 画像処理ユーティリティ
  *
- * Canvas APIを使用したEXIF情報削除・回転補正処理を提供する。
- * ブラウザネイティブAPIのみを使用し、外部ライブラリに依存しない。
+ * exifrライブラリによるEXIF Orientation読取と、
+ * Canvas APIによる回転補正・EXIF削除処理を提供する。
  *
  * @since 1.4
  */
+
+import exifr from "exifr";
 
 /** 画像ファイルの最大サイズ（5MB） */
 export const MAX_FILE_SIZE: number = 5 * 1024 * 1024;
@@ -52,10 +54,10 @@ const ORIENTATION_TRANSFORMS: Record<number, OrientationTransform> = {
 /**
  * JPEGファイルからEXIF Orientation値を読み取る
  *
- * バイナリデータを直接パースし、SOI→APP1(EXIF)→IFD0のOrientation(0x0112)タグを検索する。
- * 外部ライブラリを使用せず、最小限のバイナリ解析で実現する。
+ * exifrライブラリを使用してEXIFメタデータからOrientation値を取得する。
+ * JPEG以外のファイルや取得できない場合はデフォルト値1を返却する。
  *
- * @param file - JPEG画像ファイル
+ * @param file - 画像ファイル
  * @returns Orientation値（1-8、取得できない場合は1）
  */
 export async function getExifOrientation(file: File): Promise<number> {
@@ -64,61 +66,14 @@ export async function getExifOrientation(file: File): Promise<number> {
     return 1;
   }
 
-  const buffer: ArrayBuffer = await file.slice(0, 65536).arrayBuffer();
-  const view: DataView = new DataView(buffer);
-
-  // SOIマーカー（0xFFD8）の確認
-  if (view.getUint16(0) !== 0xFFD8) {
+  try {
+    const orientation = await exifr.orientation(file);
+    return (orientation != null && orientation >= 1 && orientation <= 8)
+      ? orientation
+      : 1;
+  } catch {
     return 1;
   }
-
-  let offset = 2;
-  while (offset < view.byteLength - 2) {
-    const marker: number = view.getUint16(offset);
-
-    // APP1マーカー（0xFFE1）= EXIFデータ
-    if (marker === 0xFFE1) {
-      const exifOffset: number = offset + 4;
-
-      // "Exif\0\0"シグネチャの確認
-      if (
-        view.getUint32(exifOffset) !== 0x45786966 ||
-        view.getUint16(exifOffset + 4) !== 0x0000
-      ) {
-        return 1;
-      }
-
-      const tiffOffset: number = exifOffset + 6;
-
-      // エンディアン判定（"II"=リトルエンディアン、"MM"=ビッグエンディアン）
-      const littleEndian: boolean = view.getUint16(tiffOffset) === 0x4949;
-
-      // IFD0エントリ数の取得
-      const ifdOffset: number = tiffOffset + view.getUint32(tiffOffset + 4, littleEndian);
-      const entryCount: number = view.getUint16(ifdOffset, littleEndian);
-
-      // IFD0エントリからOrientation(0x0112)タグを検索
-      for (let i = 0; i < entryCount; i++) {
-        const entryOffset: number = ifdOffset + 2 + i * 12;
-        if (entryOffset + 12 > view.byteLength) break;
-
-        const tag: number = view.getUint16(entryOffset, littleEndian);
-        if (tag === 0x0112) {
-          const orientation: number = view.getUint16(entryOffset + 8, littleEndian);
-          return orientation >= 1 && orientation <= 8 ? orientation : 1;
-        }
-      }
-
-      return 1;
-    }
-
-    // 他のマーカーはスキップ
-    if ((marker & 0xFF00) !== 0xFF00) break;
-    const segmentLength: number = view.getUint16(offset + 2);
-    offset += 2 + segmentLength;
-  }
-
-  return 1;
 }
 
 /**
