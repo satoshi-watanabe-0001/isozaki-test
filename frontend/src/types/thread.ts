@@ -6,6 +6,16 @@
  * @since 1.3
  */
 
+/** コメント画像情報 */
+export interface CommentImage {
+  /** 画像ID（UUIDv7文字列） */
+  imageId: string;
+  /** サムネイル画像URL（400px幅WebP） */
+  thumbnailUrl: string;
+  /** 表示用画像URL（1200px幅WebP） */
+  displayUrl: string;
+}
+
 /** スレッド一覧アイテム */
 export interface ThreadListItem {
   /** スレッドID（UUIDv7文字列） */
@@ -44,6 +54,8 @@ export interface ThreadComment {
   createdByUsername: string;
   /** コメント作成日時（ISO 8601文字列） */
   createdAt: string;
+  /** コメントに紐づく画像リスト */
+  images: CommentImage[];
 }
 
 /** スレッド詳細レスポンス */
@@ -66,4 +78,20 @@ export interface ThreadDetailResponse {
   size: number;
   /** 総ページ数 */
   totalPages: number;
+}
+
+/** Pre-signed URLレスポンスの個別画像情報 */
+export interface UploadUrlItem {
+  /** 画像ID（UUIDv7文字列） */
+  imageId: string;
+  /** Pre-signed URL（PUT用） */
+  uploadUrl: string;
+  /** S3オブジェクトキー */
+  s3Key: string;
+}
+
+/** Pre-signed URLレスポンス */
+export interface UploadUrlResponse {
+  /** Pre-signed URL情報のリスト */
+  uploads: UploadUrlItem[];
 }

@@ -14,9 +14,11 @@ import { useParams, notFound } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatRelativeDate } from "@/utils/dateFormat";
 import AddCommentModal from "@/components/AddCommentModal";
+import CommentImageGrid from "@/components/CommentImageGrid";
+import ImageLightbox from "@/components/ImageLightbox";
 import LoginPromptDialog from "@/components/LoginPromptDialog";
 import toast, { Toaster } from "react-hot-toast";
-import type { ThreadDetailResponse, ThreadComment } from "@/types/thread";
+import type { ThreadDetailResponse, ThreadComment, CommentImage } from "@/types/thread";
 
 /** バックエンドAPIのベースURL */
 const BACKEND_URL: string =
@@ -51,6 +53,9 @@ export default function ThreadDetailPage(): ReactNode {
 
   const [isCommentModalOpen, setIsCommentModalOpen] = useState<boolean>(false);
   const [isLoginDialogOpen, setIsLoginDialogOpen] = useState<boolean>(false);
+  const [lightboxImages, setLightboxImages] = useState<CommentImage[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState<number>(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState<boolean>(false);
 
   /**
    * スレッド詳細データを取得する（初回読み込み）
@@ -205,6 +210,17 @@ export default function ThreadDetailPage(): ReactNode {
                     >
                       {comment.content}
                     </p>
+                    {/* コメント画像グリッド */}
+                    {comment.images && comment.images.length > 0 && (
+                      <CommentImageGrid
+                        images={comment.images}
+                        onImageClick={(index: number) => {
+                          setLightboxImages(comment.images);
+                          setLightboxIndex(index);
+                          setIsLightboxOpen(true);
+                        }}
+                      />
+                    )}
                   </li>
                 ))}
               </ul>
@@ -271,6 +287,14 @@ export default function ThreadDetailPage(): ReactNode {
       <LoginPromptDialog
         isOpen={isLoginDialogOpen}
         onClose={() => setIsLoginDialogOpen(false)}
+      />
+
+      {/* 画像ライトボックス */}
+      <ImageLightbox
+        images={lightboxImages}
+        initialIndex={lightboxIndex}
+        isOpen={isLightboxOpen}
+        onClose={() => setIsLightboxOpen(false)}
       />
     </div>
   );

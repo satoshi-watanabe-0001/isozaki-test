@@ -138,7 +138,8 @@ class ThreadResourceTest {
                 List.of(new ThreadCommentResponse(
                         "01970000-2000-7000-8000-000000000001",
                         "テストコメント", "テストユーザー",
-                        Instant.parse("2025-04-13T10:05:00Z"))),
+                        Instant.parse("2025-04-13T10:05:00Z"),
+                        List.of())),
                 1L, 1, 10, 1
         );
         when(threadService.getThreadDetail(
@@ -225,7 +226,8 @@ class ThreadResourceTest {
                 List.of(new ThreadCommentResponse(
                         "01970000-2000-7000-8000-000000000001",
                         "古いコメント", "テストユーザー",
-                        Instant.parse("2025-04-13T09:00:00Z"))),
+                        Instant.parse("2025-04-13T09:00:00Z"),
+                        List.of())),
                 15L, 0, 10, 0
         );
         when(threadService.getThreadDetailBefore(
@@ -286,7 +288,8 @@ class ThreadResourceTest {
                 List.of(new ThreadCommentResponse(
                         "01970000-2000-7000-8000-000000000100",
                         "初回コメント",
-                        "テストユーザー", Instant.now())),
+                        "テストユーザー", Instant.now(),
+                        List.of())),
                 1L, 1, 10, 1
         );
         when(threadService.createThread(
@@ -343,10 +346,11 @@ class ThreadResourceTest {
     void shouldReturnCreatedForNewComment() {
         // Given: ログイン済みユーザによるコメント追加リクエスト
         CreateCommentRequest request = new CreateCommentRequest(
-                "新しいコメント", "valid-session-id");
+                "新しいコメント", "valid-session-id", null);
         ThreadCommentResponse expectedResponse = new ThreadCommentResponse(
                 "01970000-2000-7000-8000-000000000050",
-                "新しいコメント", "テストユーザー", Instant.now()
+                "新しいコメント", "テストユーザー", Instant.now(),
+                List.of()
         );
         when(threadService.addComment(
                 eq("aimyon"), eq(THREAD_UUID_1),
@@ -380,7 +384,7 @@ class ThreadResourceTest {
     void shouldReturnUnauthorizedForAddComment() {
         // Given: 無効なセッションによるコメント追加リクエスト
         CreateCommentRequest request = new CreateCommentRequest(
-                "新しいコメント", "invalid-session-id");
+                "新しいコメント", "invalid-session-id", null);
         when(threadService.addComment(
                 eq("aimyon"), eq(THREAD_UUID_1),
                 any(CreateCommentRequest.class)))
@@ -406,7 +410,7 @@ class ThreadResourceTest {
     void shouldReturnBadRequestForInvalidThreadIdInComment() {
         // Given: コメント追加リクエスト
         CreateCommentRequest request = new CreateCommentRequest(
-                "コメント", "valid-session-id");
+                "コメント", "valid-session-id", null);
 
         // When: 不正なUUID形式でコメント追加を実行
         Response response = threadResource.addComment(

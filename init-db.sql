@@ -259,6 +259,36 @@ CREATE TABLE IF NOT EXISTS thread_comments (
 -- スレッドID・作成日時検索用インデックス
 CREATE INDEX IF NOT EXISTS idx_thread_comments_thread_id ON thread_comments (thread_id, created_at DESC);
 
+-- ============================================================================
+-- comment_imagesテーブルの作成（コメント画像情報）
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS comment_images (
+    -- 画像ID（UUIDv7形式）
+    image_id UUID PRIMARY KEY,
+
+    -- コメントID（外部キー、NULLの場合はPENDING状態）
+    comment_id UUID REFERENCES thread_comments(comment_id),
+
+    -- S3オブジェクトキー（originals/プレフィックス付き）
+    s3_key VARCHAR(500) NOT NULL,
+
+    -- 画像ステータス（PENDING: アップロード中、CONFIRMED: コメント紐付け済み）
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+
+    -- アップロードしたユーザID（外部キー）
+    uploaded_by UUID NOT NULL REFERENCES users(user_id),
+
+    -- レコード作成日時
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- コメントID検索用インデックス
+CREATE INDEX IF NOT EXISTS idx_comment_images_comment_id ON comment_images (comment_id);
+
+-- ステータス・作成日時検索用インデックス（クリーンアップ用）
+CREATE INDEX IF NOT EXISTS idx_comment_images_status_created ON comment_images (status, created_at);
+
 -- テスト用追加ユーザデータ（スレッド投稿用）
 INSERT INTO users (user_id, username, email, password_hash, created_at, updated_at)
 VALUES (

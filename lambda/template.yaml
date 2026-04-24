@@ -1,0 +1,95 @@
+# AWS SAM テンプレート（画像処理Lambda）
+#
+# image-processor/ ディレクトリの lambdaHandler.js をLambda関数としてデプロイする。
+# S3バケットへのPUTイベント（originals/プレフィックス）でトリガーされる。
+#
+# デプロイ手順:
+#   sam build
+#   sam deploy --guided
+#
+# @since 1.4
+
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: コメント画像リサイズ・WebP変換Lambda
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 512
+    Runtime: nodejs20.x
+
+Parameters:
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+    Description: デプロイ環境
+
+  ImageBucketName:
+    Type: String
+    Default: isozaki-test-images
+    Description: 画像保存用S3バケット名
+
+Resources:
+  # 画像処理Lambda関数
+  ImageProcessorFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      FunctionName: !Sub "isozaki-test-image-processor-${Environment}"
+      CodeUri: ../image-processor/
+      Handler: src/lambdaHandler.handler
+      Description: コメント画像のリサイズ・WebP変換処理
+      Environment:
+        Variables:
+          NODE_ENV: !Ref Environment
+          IMAGE_BUCKET: !Ref ImageBucketName
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref ImageBucketName
+        - S3CrudPolicy:
+            BucketName: !Ref ImageBucketName
+      Events:
+        S3PutEvent:
+          Type: S3
+          Properties:
+            Bucket: !Ref ImageBucket
+            Events: s3:ObjectCreated:Put
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: originals/
+
+  # 画像保存用S3バケット
+  ImageBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref ImageBucketName
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - "*"
+            AllowedMethods:
+              - PUT
+              - GET
+            AllowedOrigins:
+              - "*"
+            MaxAge: 3600
+
+Outputs:
+  ImageProcessorFunctionArn:
+    Description: 画像処理Lambda関数のARN
+    Value: !GetAtt ImageProcessorFunction.Arn
+
+  ImageBucketArn:
+    Description: 画像保存用S3バケットのARN
+    Value: !GetAtt ImageBucket.Arn
+
+  ImageBucketName:
+    Description: 画像保存用S3バケット名
+    Value: !Ref ImageBucket

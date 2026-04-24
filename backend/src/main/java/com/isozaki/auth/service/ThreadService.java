@@ -12,6 +12,7 @@
 
 package com.isozaki.auth.service;
 
+import com.isozaki.auth.dto.CommentImageResponse;
 import com.isozaki.auth.dto.CommentProjection;
 import com.isozaki.auth.dto.CreateCommentRequest;
 import com.isozaki.auth.dto.CreateThreadRequest;
@@ -32,6 +33,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -57,6 +59,7 @@ public class ThreadService {
     private final SessionService sessionService;
     private final UserRepository userRepository;
     private final UuidService uuidService;
+    private final ImageService imageService;
 
     /**
      * 各リポジトリ・サービスを注入してスレッドサービスを初期化する
@@ -67,6 +70,7 @@ public class ThreadService {
      * @param sessionService          セッション管理サービス
      * @param userRepository          ユーザリポジトリ
      * @param uuidService             UUID生成サービス
+     * @param imageService            画像サービス
      */
     @Inject
     public ThreadService(
@@ -75,13 +79,15 @@ public class ThreadService {
             ArtistRepository artistRepository,
             SessionService sessionService,
             UserRepository userRepository,
-            UuidService uuidService) {
+            UuidService uuidService,
+            ImageService imageService) {
         this.threadRepository = threadRepository;
         this.threadCommentRepository = threadCommentRepository;
         this.artistRepository = artistRepository;
         this.sessionService = sessionService;
         this.userRepository = userRepository;
         this.uuidService = uuidService;
+        this.imageService = imageService;
     }
 
     /**
@@ -152,9 +158,8 @@ public class ThreadService {
                 threadCommentRepository.findByThreadIdWithUsername(
                         threadId, page - 1, clampedSize);
 
-        List<ThreadCommentResponse> commentResponses = commentProjections.stream()
-                .map(this::toCommentResponse)
-                .toList();
+        List<ThreadCommentResponse> commentResponses =
+                attachImagesToComments(commentProjections);
 
         return Optional.of(new ThreadDetailResponse(
                 threadProjection.threadId().toString(),
@@ -201,9 +206,8 @@ public class ThreadService {
                 threadCommentRepository.findByThreadIdWithUsernameBefore(
                         threadId, beforeCommentId, clampedSize);
 
-        List<ThreadCommentResponse> commentResponses = commentProjections.stream()
-                .map(this::toCommentResponse)
-                .toList();
+        List<ThreadCommentResponse> commentResponses =
+                attachImagesToComments(commentProjections);
 
         return Optional.of(new ThreadDetailResponse(
                 threadProjection.threadId().toString(),
@@ -276,7 +280,8 @@ public class ThreadService {
                 comment.commentId.toString(),
                 comment.content,
                 username,
-                now
+                now,
+                List.of()
         );
 
         return Optional.of(new ThreadDetailResponse(
@@ -328,6 +333,18 @@ public class ThreadService {
         comment.createdAt = now;
         threadCommentRepository.persist(comment);
 
+        // 画像紐付け（imageIdsが指定されている場合）
+        List<CommentImageResponse> imageResponses = List.of();
+        if (request.imageIds() != null && !request.imageIds().isEmpty()) {
+            List<UUID> imageUuids = request.imageIds().stream()
+                    .map(UUID::fromString)
+                    .toList();
+            imageService.confirmImages(imageUuids, comment.commentId, userUuid);
+            Map<UUID, List<CommentImageResponse>> imageMap =
+                    imageService.getImagesByCommentIds(List.of(comment.commentId));
+            imageResponses = imageMap.getOrDefault(comment.commentId, List.of());
+        }
+
         // 非正規化: スレッドの最新コメント情報を更新
         thread.latestCommentContent = request.content();
         thread.latestCommentAt = now;
@@ -340,7 +357,8 @@ public class ThreadService {
                 comment.commentId.toString(),
                 comment.content,
                 username,
-                now
+                now,
+                imageResponses
         ));
     }
 
@@ -363,18 +381,30 @@ public class ThreadService {
     }
 
     /**
-     * CommentProjectionをコメントレスポンスDTOに変換する
+     * コメントProjectionリストに画像情報を付加してレスポンスDTOリストを生成する
      *
-     * @param projection JPQL JOIN結果のプロジェクション
-     * @return コメントレスポンスDTO
+     * <p>N+1問題を回避するため、コメントIDリストで一括画像取得を行う。</p>
+     *
+     * @param projections JPQL JOIN結果のプロジェクションリスト
+     * @return 画像付きコメントレスポンスDTOリスト
      */
-    private ThreadCommentResponse toCommentResponse(CommentProjection projection) {
-        return new ThreadCommentResponse(
-                projection.commentId().toString(),
-                projection.content(),
-                projection.username(),
-                projection.createdAt()
-        );
+    private List<ThreadCommentResponse> attachImagesToComments(
+            List<CommentProjection> projections) {
+        List<UUID> commentIds = projections.stream()
+                .map(CommentProjection::commentId)
+                .toList();
+
+        Map<UUID, List<CommentImageResponse>> imageMap =
+                imageService.getImagesByCommentIds(commentIds);
+
+        return projections.stream()
+                .map(p -> new ThreadCommentResponse(
+                        p.commentId().toString(),
+                        p.content(),
+                        p.username(),
+                        p.createdAt(),
+                        imageMap.getOrDefault(p.commentId(), List.of())))
+                .toList();
     }
 
     /**
