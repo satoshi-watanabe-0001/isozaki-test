@@ -1,10 +1,10 @@
 /**
  * アーティスト一覧ページの単体テスト
  *
- * アーティスト一覧ページの表示・ローディング・エラー状態をテストする。
- * fetch APIをモックしてバックエンドAPIの応答をシミュレートする。
+ * SSR（Server Component）に変更後のアーティスト一覧ページをテストする。
+ * async Server Componentのため、コンポーネント関数を直接awaitしてJSXを取得し描画する。
  */
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import ArtistsPage from "@/app/artists/page";
 import type { Artist } from "@/types/artist";
@@ -42,23 +42,7 @@ describe("ArtistsPage", () => {
   ];
 
   /**
-   * 【テスト対象】ArtistsPage コンポーネント
-   * 【テストケース】ローディング中の表示
-   * 【期待結果】「読み込み中...」が表示される
-   * 【ビジネス要件】データ取得中のローディング表示
-   */
-  it("ローディング中に「読み込み中...」が表示されること", () => {
-    // fetchが解決しないPromiseを返すことでローディング状態を維持
-    mockFetch.mockReturnValue(new Promise(() => {}));
-
-    render(<ArtistsPage />);
-
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-    expect(screen.getByText("読み込み中...")).toBeInTheDocument();
-  });
-
-  /**
-   * 【テスト対象】ArtistsPage コンポーネント
+   * 【テスト対象】ArtistsPage コンポーネント（SSR）
    * 【テストケース】アーティスト一覧の正常表示
    * 【期待結果】全アーティストが2列グリッドで表示される
    * 【ビジネス要件】アーティスト一覧のグリッド表示
@@ -69,19 +53,17 @@ describe("ArtistsPage", () => {
       json: async () => mockArtists,
     });
 
-    render(<ArtistsPage />);
+    const jsx = await ArtistsPage();
+    render(jsx);
 
-    await waitFor(() => {
-      expect(screen.getByText("あいみょん")).toBeInTheDocument();
-    });
-
+    expect(screen.getByText("あいみょん")).toBeInTheDocument();
     expect(screen.getByText("嵐")).toBeInTheDocument();
     expect(screen.getByText("いきものがかり")).toBeInTheDocument();
     expect(screen.getByTestId("artist-grid")).toBeInTheDocument();
   });
 
   /**
-   * 【テスト対象】ArtistsPage コンポーネント
+   * 【テスト対象】ArtistsPage コンポーネント（SSR）
    * 【テストケース】ページタイトルの表示
    * 【期待結果】「アーティスト一覧」のページタイトルが表示される
    * 【ビジネス要件】アーティスト一覧ページのタイトル表示
@@ -92,17 +74,16 @@ describe("ArtistsPage", () => {
       json: async () => mockArtists,
     });
 
-    render(<ArtistsPage />);
+    const jsx = await ArtistsPage();
+    render(jsx);
 
-    await waitFor(() => {
-      expect(
-        screen.getByRole("heading", { name: "アーティスト一覧" })
-      ).toBeInTheDocument();
-    });
+    expect(
+      screen.getByRole("heading", { name: "アーティスト一覧" })
+    ).toBeInTheDocument();
   });
 
   /**
-   * 【テスト対象】ArtistsPage コンポーネント
+   * 【テスト対象】ArtistsPage コンポーネント（SSR）
    * 【テストケース】「And more...」の表示
    * 【期待結果】アーティスト一覧の右下に「And more...」が表示される
    * 【ビジネス要件】追加アーティストの存在を示すUI表示
@@ -113,49 +94,60 @@ describe("ArtistsPage", () => {
       json: async () => mockArtists,
     });
 
-    render(<ArtistsPage />);
+    const jsx = await ArtistsPage();
+    render(jsx);
 
-    await waitFor(() => {
-      expect(screen.getByTestId("and-more")).toBeInTheDocument();
-    });
-
+    expect(screen.getByTestId("and-more")).toBeInTheDocument();
     expect(screen.getByText("And more...")).toBeInTheDocument();
   });
 
   /**
-   * 【テスト対象】ArtistsPage コンポーネント
-   * 【テストケース】API取得エラー時の表示
-   * 【期待結果】エラーがthrowされ共通エラーページが表示される
+   * 【テスト対象】ArtistsPage コンポーネント（SSR）
+   * 【テストケース】API取得エラー時
+   * 【期待結果】Errorがthrowされる（Next.js Error Boundaryでキャッチ）
    * 【ビジネス要件】エラー時のエラーバウンダリ遷移
    */
-  it("API取得エラー時にエラーがthrowされること", async () => {
+  it("API取得エラー時にErrorがthrowされること", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 500,
     });
 
-    // エラーがthrowされることを確認（React Error Boundaryでキャッチされる想定）
-    expect(() => {
-      render(<ArtistsPage />);
-    }).not.toThrow();
-
-    // エラーはstateに設定後、レンダリング中にthrowされる
+    await expect(ArtistsPage()).rejects.toThrow(
+      "アーティスト一覧の取得に失敗しました（500）"
+    );
   });
 
   /**
-   * 【テスト対象】ArtistsPage コンポーネント
-   * 【テストケース】ネットワークエラー時の表示
-   * 【期待結果】エラーがthrowされ共通エラーページが表示される
+   * 【テスト対象】ArtistsPage コンポーネント（SSR）
+   * 【テストケース】ネットワークエラー時
+   * 【期待結果】fetch自体がrejectしてErrorがthrowされる
    * 【ビジネス要件】ネットワーク障害時のエラーバウンダリ遷移
    */
-  it("ネットワークエラー時にエラーがthrowされること", async () => {
+  it("ネットワークエラー時にErrorがthrowされること", async () => {
     mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
-    // エラーがthrowされることを確認（React Error Boundaryでキャッチされる想定）
-    expect(() => {
-      render(<ArtistsPage />);
-    }).not.toThrow();
+    await expect(ArtistsPage()).rejects.toThrow("Network error");
+  });
 
-    // エラーはstateに設定後、レンダリング中にthrowされる
+  /**
+   * 【テスト対象】ArtistsPage コンポーネント（SSR）
+   * 【テストケース】fetchにcache: "no-store"が渡される
+   * 【期待結果】SSRでキャッシュ無効化が設定されている
+   * 【ビジネス要件】常に最新データを取得する
+   */
+  it("fetchにcache: \"no-store\"が渡されること", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockArtists,
+    });
+
+    const jsx = await ArtistsPage();
+    render(jsx);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.any(String),
+      { cache: "no-store" },
+    );
   });
 });
