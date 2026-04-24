@@ -49,11 +49,29 @@ jobs:
         env:
           NEXT_PUBLIC_BACKEND_URL: http://localhost:8080
 
+      - name: モックAPIサーバーの起動（SSR fetch用）
+        run: node mock-server.cjs &
+        working-directory: e2e/frontend
+
+      - name: モックAPIサーバーの起動待機
+        run: |
+          for i in $(seq 1 10); do
+            if curl -s http://localhost:8080/q/health > /dev/null 2>&1; then
+              echo "モックAPIサーバーが起動しました"
+              exit 0
+            fi
+            echo "起動待機中... ($i/10)"
+            sleep 1
+          done
+          echo "モックAPIサーバーの起動がタイムアウトしました"
+          exit 1
+
       - name: フロントエンドサーバーの起動
         run: npm run start &
         working-directory: frontend
         env:
           PORT: 3000
+          BACKEND_URL: http://localhost:8080
 
       - name: フロントエンドサーバーの起動待機
         run: |
