@@ -82,7 +82,7 @@ describe("ThreadListPage", () => {
 
     renderWithAuth();
 
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByTestId("thread-list")).toBeInTheDocument();

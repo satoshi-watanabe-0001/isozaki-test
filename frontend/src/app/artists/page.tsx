@@ -1,75 +1,40 @@
 /**
- * アーティスト一覧ページコンポーネント
+ * アーティスト一覧ページコンポーネント（SSR）
  *
- * バックエンドAPIからアーティスト一覧を取得し、
+ * バックエンドAPIからアーティスト一覧をサーバサイドで取得し、
  * 2列のグリッドレイアウトでアイコンと名前を表示する。
  * アーティストは50音順にソートされ、右下に「And more...」を表示する。
  *
  * @since 1.1
+ * @modified 1.5 CSRからSSR（Server Component）に変更
  */
-"use client";
 
-import { useState, useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { Artist } from "@/types/artist";
 import ArtistCard from "@/components/ArtistCard";
 
-/** バックエンドAPIのベースURL */
+/** バックエンドAPIのベースURL（サーバサイド用） */
 const BACKEND_URL: string =
-  process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8080";
+  process.env.BACKEND_URL ?? "http://localhost:8080";
 
 /**
- * アーティスト一覧ページコンポーネント
+ * アーティスト一覧ページコンポーネント（Server Component）
  *
- * マウント時にバックエンドAPIからアーティスト一覧を取得し、
- * 50音順に2列で表示する。取得失敗時はエラーメッセージを表示する。
+ * サーバサイドでバックエンドAPIからアーティスト一覧を取得し、
+ * 50音順に2列で表示する。取得失敗時はError Boundaryに委譲する。
  *
  * @returns アーティスト一覧ページのJSX要素
  */
-export default function ArtistsPage(): ReactNode {
-  const [artists, setArtists] = useState<Artist[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+export default async function ArtistsPage(): Promise<ReactNode> {
+  const response: Response = await fetch(`${BACKEND_URL}/api/v1/artists`, {
+    cache: "no-store",
+  });
 
-  useEffect(() => {
-    /**
-     * バックエンドAPIからアーティスト一覧を取得する
-     *
-     * 50音順にソート済みのデータがAPIから返却されるため、
-     * フロントエンド側での再ソートは不要。
-     */
-    const fetchArtists = async (): Promise<void> => {
-      try {
-        const response: Response = await fetch(`${BACKEND_URL}/api/v1/artists`);
-        if (!response.ok) {
-          throw new Error(`アーティスト一覧の取得に失敗しました（${response.status}）`);
-        }
-        const data: Artist[] = await response.json();
-        setArtists(data);
-      } catch (err) {
-        const errorMessage: string =
-          err instanceof Error ? err.message : "不明なエラーが発生しました";
-        setError(errorMessage);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    void fetchArtists();
-  }, []);
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-1 items-center justify-center bg-zinc-50 dark:bg-black">
-        <p className="text-gray-500" data-testid="loading-indicator">
-          読み込み中...
-        </p>
-      </div>
-    );
+  if (!response.ok) {
+    throw new Error(`アーティスト一覧の取得に失敗しました（${response.status}）`);
   }
 
-  if (error) {
-    throw new Error(error);
-  }
+  const artists: Artist[] = await response.json();
 
   return (
     <div className="flex-1 bg-zinc-50 dark:bg-black">

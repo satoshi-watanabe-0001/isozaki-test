@@ -18,6 +18,7 @@ import CommentImageGrid from "@/components/CommentImageGrid";
 import ImageLightbox from "@/components/ImageLightbox";
 import LoginPromptDialog from "@/components/LoginPromptDialog";
 import toast, { Toaster } from "react-hot-toast";
+import LoadingSpinner from "@/components/LoadingSpinner";
 import type { ThreadDetailResponse, ThreadComment, CommentImage } from "@/types/thread";
 
 /** バックエンドAPIのベースURL */
@@ -165,9 +166,7 @@ export default function ThreadDetailPage(): ReactNode {
       <main className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <p className="text-gray-500" data-testid="loading-indicator">
-              読み込み中...
-            </p>
+            <LoadingSpinner size="lg" />
           </div>
         ) : threadData !== null ? (
           <>
@@ -242,7 +241,12 @@ export default function ThreadDetailPage(): ReactNode {
                   className="rounded-md border border-gray-300 px-6 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-600 dark:text-gray-300"
                   data-testid="load-more-button"
                 >
-                  {isLoadingMore ? "読み込み中..." : "もっと見る"}
+                  {isLoadingMore ? (
+                    <span className="flex items-center gap-2">
+                      <LoadingSpinner size="sm" />
+                      読み込み中
+                    </span>
+                  ) : "もっと見る"}
                 </button>
               </div>
             )}

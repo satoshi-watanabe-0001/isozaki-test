@@ -17,6 +17,7 @@ import { formatRelativeDate } from "@/utils/dateFormat";
 import CreateThreadModal from "@/components/CreateThreadModal";
 import LoginPromptDialog from "@/components/LoginPromptDialog";
 import toast, { Toaster } from "react-hot-toast";
+import LoadingSpinner from "@/components/LoadingSpinner";
 import type { ThreadListResponse } from "@/types/thread";
 
 /** バックエンドAPIのベースURL */
@@ -135,9 +136,7 @@ export default function ThreadListPage(): ReactNode {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <p className="text-gray-500" data-testid="loading-indicator">
-              読み込み中...
-            </p>
+            <LoadingSpinner size="lg" />
           </div>
         ) : threadData && threadData.threads.length > 0 ? (
           <>

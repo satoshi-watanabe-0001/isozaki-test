@@ -1,4 +1,10 @@
-# 画像処理Lambda自動デプロイ
+# =============================================================================
+# 画像処理Lambda自動デプロイ（無効化済み）
+#
+# 現時点でLambdaデプロイは不要のため、スケルトンとして無効化しています。
+# 再有効化する場合は以下を実施してください:
+#   1. on.workflow_dispatch を on.push に変更（paths設定を復元）
+#   2. jobs.deploy の if: false を削除
 #
 # mainブランチへのマージ時に image-processor/ 配下の変更を検知し、
 # AWS SAM でLambda関数を自動デプロイする。
@@ -9,19 +15,26 @@
 #   - AWS_REGION: デプロイ先リージョン（デフォルト: ap-northeast-1）
 #
 # @since 1.4
+# @modified 1.5 スケルトンとして無効化（push トリガー → workflow_dispatch、if: false追加）
+# =============================================================================
 
 name: Deploy Image Processor Lambda
 
+# 元のトリガー（無効化）:
+# on:
+#   push:
+#     branches:
+#       - main
+#     paths:
+#       - 'image-processor/**'
+#       - 'lambda/**'
+
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'image-processor/**'
-      - 'lambda/**'
+  workflow_dispatch:
 
 jobs:
   deploy:
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: リポジトリのチェックアウト

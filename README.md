@@ -1,20 +1,24 @@
-# ユーザ認証アプリケーション
+# Devinテストアプリケーション
 
-Quarkus バックエンドと Next.js フロントエンドで構成されたモノレポ構成のユーザ認証アプリケーションです。
+Quarkus バックエンドと Next.js フロントエンドで構成されたモノレポ構成のコミュニティプラットフォームです。
 
 ## 概要
 
-本リポジトリはモノレポ構成を採用しており、以下の2つのサービスで構成されています。
+本リポジトリはモノレポ構成を採用しており、以下のサービスで構成されています。
 
 | サービス | ディレクトリ | 技術スタック |
 |---|---|---|
 | Backend | `backend/` | Quarkus（Java 17）、Gradle |
 | Frontend | `frontend/` | Next.js 16（TypeScript、Tailwind CSS） |
+| Image Processor | `image-processor/` | Node.js 22、sharp（画像リサイズ・WebP変換） |
+| Lambda Template | `lambda/` | AWS SAM テンプレート（デプロイスケルトン） |
 
 ### インフラストラクチャ
 
 - **データベース**: PostgreSQL 16（UTF-8）
 - **セッション管理**: Redis 7
+- **オブジェクトストレージ**: MinIO（S3互換、画像保存用）
+- **画像処理**: image-processor（Node.js + sharp、WebP変換・リサイズ）
 - **コンテナ**: Docker（マルチステージビルド）
 - **オーケストレーション**: Docker Compose
 
@@ -30,6 +34,10 @@ Quarkus バックエンドと Next.js フロントエンドで構成されたモ
 - ヘルスチェックエンドポイント（`/q/health`、`/q/health/live`、`/q/health/ready`）
 - JSON形式のログ出力
 - アクセスログ
+- アーティスト一覧API（50音順ソート）
+- コミュニティTOP情報集約API（画像・キャンペーン・お知らせ）
+- スレッドCRUD API（一覧・詳細・作成・コメント追加、カーソルベースページング）
+- 画像アップロードAPI（Pre-signed URL発行、PENDING/CONFIRMED管理、定期クリーンアップ）
 
 ### Frontend
 
@@ -37,27 +45,57 @@ Quarkus バックエンドと Next.js フロントエンドで構成されたモ
 - 全ページ共通ヘッダー（「Devin-Test」タイトル表示）
   - 未ログイン時：「ログイン」ボタンを表示
   - ログイン済み時：ユーザーIDとユーザー名を表示、ログアウトボタンを表示
+  - サブページでの「戻る」ボタン対応
 - ログインモーダル（メールアドレス・パスワード入力、クローズボタン・オーバーレイクリック対応）
 - 認証状態管理（AuthContext）
   - `sessionStorage`を使用したブラウザでのセッション保持
   - ページ再アクセス時にバックエンドAPIでセッション有効性を検証
   - ログアウト時にバックエンドAPIでRedisセッションを削除
-- アーティスト一覧ページ（`/artists`）
-  - バックエンドAPIから取得したアーティストを2列グリッドで50音順に表示
+- アーティスト一覧ページ（`/artists`）— **SSR（Server Component）**
+  - サーバサイドでバックエンドAPIからアーティスト一覧を取得
+  - 2列グリッドで50音順に表示
   - 各アーティストカードからコミュニティTOPページへのリンク
   - 「And more...」表示
-- コミュニティTOPページ（`/community/{artistId}`）
+  - ストリーミングSSR時のローディングスピナー表示（`loading.tsx`）
+- コミュニティTOPページ（`/community/{artistId}`）— **SSR（Server + Client Component）**
+  - サーバサイドでバックエンドAPIからコミュニティTOP情報を取得（Server Component）
   - アーティスト名表示（先頭）
-  - カルーセル画像（正方形、横スワイプ切替、最大3件、インジケーター付き）
+  - カルーセル画像（Embla Carousel、正方形、横スワイプ切替、最大3件、インジケーター付き）— Client Component
   - メニュー領域（4列: プロフィール・イベント・キャンペーン・スレッド・お知らせ・公式ページ）
   - キャンペーン領域（スマホ横幅対応の正方形画像を横スクロール、スクロールバー非表示、最大3件）
   - お知らせ領域（新着順でタイトル表示、最大5件）
+  - ストリーミングSSR時のローディングスピナー表示（`loading.tsx`）
+- スレッド一覧ページ（`/community/{artistId}/threads`）
+  - スレッドタイトル、作成ユーザ名、最新コメント、書き込み日時を表示
+  - 最新書き込み日時の降順ソート、ページング対応（20件/ページ）
+  - ログイン済みユーザのスレッド作成機能（FAB + モーダル）
+  - ログイン促進ダイアログ
+  - ローディングスピナー表示
+- スレッド詳細ページ（`/community/{artistId}/threads/{threadId}`）
+  - スレッドタイトル、作成者、コメント一覧表示
+  - 「もっと見る」ボタンによるカーソルベースページング（10件/ページ）
+  - 画像付きコメント対応（X(Twitter)風グリッドレイアウト、react-image-galleryライトボックス）
+  - ログイン済みユーザのコメント追加機能（FAB + モーダル、画像添付対応）
+  - EXIF回転情報の自動補正（exifr + Canvas API）
+  - ローディングスピナー表示
 - 共通404エラーページ（「404 Not Found」「ページが見つかりません」表示）
 - 共通エラーページ（「エラーが発生しました」「TOPページへ戻る」リンク表示）
 - ヘルスチェック状況表示ページ（`/test`）
 - Next.js の rewrites 機能による Backend へのAPIプロキシ
 
-## ユーザデータ構造
+### 画像処理
+
+- MinIO Webhook通知によるイベント駆動型画像処理
+- アップロード画像のWebP変換・リサイズ（sharp使用）
+  - サムネイル（400px幅）
+  - 表示用（1200px幅）
+- 単一コードベース・デュアルエントリーポイント構成
+  - `localServer.js`: ローカル開発用（Express + MinIO Webhook）
+  - `lambdaHandler.js`: AWS Lambda用（S3イベント）
+
+## データ構造
+
+### users
 
 | カラム名 | 型 | 説明 |
 |---|---|---|
@@ -67,6 +105,81 @@ Quarkus バックエンドと Next.js フロントエンドで構成されたモ
 | password_hash | VARCHAR(255) | bcryptハッシュ化パスワード |
 | created_at | TIMESTAMP | 作成日時 |
 | updated_at | TIMESTAMP | 更新日時 |
+
+### artists
+
+| カラム名 | 型 | 説明 |
+|---|---|---|
+| artist_id | VARCHAR(100) | アーティストID（英名文字列、主キー） |
+| name | VARCHAR(255) | アーティスト名 |
+| name_kana | VARCHAR(255) | ソート用読み仮名（ひらがな） |
+| icon_url | VARCHAR(500) | アイコン画像URL |
+| created_at | TIMESTAMP | 作成日時 |
+| updated_at | TIMESTAMP | 更新日時 |
+
+### artist_images
+
+| カラム名 | 型 | 説明 |
+|---|---|---|
+| image_id | SERIAL | 画像ID（主キー） |
+| artist_id | VARCHAR(100) | アーティストID（外部キー） |
+| image_url | VARCHAR(500) | 画像URL |
+| display_order | INT | 表示順 |
+| created_at | TIMESTAMP | 作成日時 |
+
+### campaigns
+
+| カラム名 | 型 | 説明 |
+|---|---|---|
+| campaign_id | SERIAL | キャンペーンID（主キー） |
+| artist_id | VARCHAR(100) | アーティストID（外部キー） |
+| title | VARCHAR(255) | キャンペーンタイトル |
+| image_url | VARCHAR(500) | キャンペーン画像URL |
+| display_order | INT | 表示順 |
+| created_at | TIMESTAMP | 作成日時 |
+
+### news
+
+| カラム名 | 型 | 説明 |
+|---|---|---|
+| news_id | SERIAL | お知らせID（主キー） |
+| artist_id | VARCHAR(100) | アーティストID（外部キー） |
+| title | VARCHAR(500) | お知らせタイトル |
+| published_at | TIMESTAMP | 公開日時 |
+| created_at | TIMESTAMP | 作成日時 |
+
+### threads
+
+| カラム名 | 型 | 説明 |
+|---|---|---|
+| thread_id | UUID | スレッドID（UUIDv7、主キー） |
+| artist_id | VARCHAR(100) | アーティストID（外部キー） |
+| title | VARCHAR(50) | スレッドタイトル |
+| created_by | UUID | 作成者ユーザID（外部キー） |
+| created_at | TIMESTAMP | 作成日時 |
+| latest_comment_content | VARCHAR(200) | 最新コメント内容（非正規化） |
+| latest_comment_at | TIMESTAMP | 最新コメント日時（非正規化） |
+
+### thread_comments
+
+| カラム名 | 型 | 説明 |
+|---|---|---|
+| comment_id | UUID | コメントID（UUIDv7、主キー） |
+| thread_id | UUID | スレッドID（外部キー） |
+| content | VARCHAR(200) | コメント内容 |
+| created_by | UUID | 作成者ユーザID（外部キー） |
+| created_at | TIMESTAMP | 作成日時 |
+
+### comment_images
+
+| カラム名 | 型 | 説明 |
+|---|---|---|
+| image_id | UUID | 画像ID（UUIDv7、主キー） |
+| comment_id | UUID | コメントID（外部キー、NULL=PENDING） |
+| s3_key | VARCHAR(500) | S3オブジェクトキー |
+| status | VARCHAR(20) | ステータス（PENDING/CONFIRMED） |
+| uploaded_by | UUID | アップロードユーザID（外部キー） |
+| created_at | TIMESTAMP | 作成日時 |
 
 ## 開発環境でのアプリケーション起動
 
@@ -96,8 +209,11 @@ npm run dev
 Docker Compose を使用して全サービスを一括起動できます:
 
 ```shell
-docker compose up --build
+docker compose up -d --build --wait backend frontend image-processor
+docker compose up minio-init
 ```
+
+> **注意:** `minio-init`はone-shotコンテナ（初期設定完了後に終了）のため、`--wait`フラグと分離して実行します。
 
 ### サービス構成
 
@@ -107,21 +223,35 @@ docker compose up --build
 | frontend | 3000 | Next.jsフロントエンド |
 | postgres | 5432 | PostgreSQLデータベース |
 | redis | 6379 | Redisセッションストア |
+| minio | 9000, 9001 | MinIOオブジェクトストレージ（API: 9000、コンソール: 9001） |
+| minio-init | - | MinIOバケット・Webhook初期設定（one-shot） |
+| image-processor | 3001 | 画像リサイズ・WebP変換サービス |
 
 ### サービス依存関係
 
 ```
-postgres, redis → backend → frontend
+postgres, redis, minio → backend → frontend
+minio → minio-init
+minio → image-processor
 ```
 
-- `backend` は `postgres` と `redis` の正常起動を待ってから起動
+- `backend` は `postgres`、`redis`、`minio` の正常起動を待ってから起動
 - `frontend` は `backend` のヘルスチェック完了を待ってから起動
+- `minio-init` は `minio` の正常起動を待ってバケット・Webhook設定を実行後に終了
+- `image-processor` は `minio` の正常起動を待ってから起動
 
 ### 環境変数
 
-Frontend の Backend 接続先は `BACKEND_INTERNAL_URL` ビルド引数で制御されます（デフォルト: `http://localhost:8080`）。Docker Compose 環境では `http://backend:8080` が設定されます。
+Frontend の Backend 接続先は以下の環境変数で制御されます:
 
-> **注意:** `BACKEND_INTERNAL_URL` は Next.js のビルド時にベイクされるため、変更時は `docker compose up --build` での再ビルドが必要です。
+| 環境変数 | 用途 | デフォルト値 |
+|---|---|---|
+| `NEXT_PUBLIC_BACKEND_URL` | クライアントサイド（ブラウザ）からのAPI呼び出し | `http://localhost:8080` |
+| `BACKEND_URL` | サーバサイド（SSR）からのAPI呼び出し | `http://localhost:8080` |
+
+Docker Compose 環境では `BACKEND_URL` に `http://backend:8080` が設定されます。
+
+> **注意:** `NEXT_PUBLIC_BACKEND_URL` は Next.js のビルド時にベイクされるため、変更時は `docker compose up --build` での再ビルドが必要です。`BACKEND_URL` はランタイム環境変数のため再ビルド不要です。
 
 ## ビルド
 
@@ -179,13 +309,22 @@ cd backend
 Docker Compose 環境で Backend API の E2E テストを実行します:
 
 ```shell
-docker compose up -d --build
+docker compose up -d --build --wait backend frontend image-processor
+docker compose up minio-init
 chmod +x ./e2e/backend/e2e-test.sh
 ./e2e/backend/e2e-test.sh
 docker compose down -v
 ```
 
 テストレポートは `e2e/backend/reports/` ディレクトリに出力されます。
+
+### Frontend 単体テスト
+
+```shell
+cd frontend
+npm install
+npm run test
+```
 
 ### Frontend統合テスト（Playwright）
 
@@ -294,6 +433,106 @@ GET /api/v1/community/{artistId}
 }
 ```
 
+### スレッド一覧
+
+```
+GET /api/v1/community/{artistId}/threads?page=1&size=20
+```
+
+アーティストのスレッド一覧を最新書き込み順で取得する。
+
+**成功レスポンス（200 OK）:**
+
+```json
+{
+  "threads": [
+    {
+      "threadId": "01970000-1000-7000-8000-000000000001",
+      "title": "ライブの感想を語ろう！",
+      "createdByUsername": "テストユーザ",
+      "latestComment": "最高の思い出になりました！",
+      "latestCommentAt": "2025-04-13T11:15:00Z"
+    }
+  ],
+  "totalPages": 2,
+  "totalThreads": 25
+}
+```
+
+### スレッド詳細
+
+```
+GET /api/v1/community/{artistId}/threads/{threadId}?page=1&size=10
+GET /api/v1/community/{artistId}/threads/{threadId}?before={commentId}&size=10
+```
+
+スレッド詳細とコメント一覧を取得する。`before`パラメータでカーソルベースページングに対応。
+
+### スレッド作成
+
+```
+POST /api/v1/community/{artistId}/threads
+X-Session-Id: {sessionId}
+Content-Type: application/json
+```
+
+**リクエスト:**
+
+```json
+{
+  "title": "新しいスレッド"
+}
+```
+
+### コメント追加
+
+```
+POST /api/v1/community/{artistId}/threads/{threadId}/comments
+X-Session-Id: {sessionId}
+Content-Type: application/json
+```
+
+**リクエスト:**
+
+```json
+{
+  "content": "コメント本文",
+  "imageIds": ["画像ID1", "画像ID2"]
+}
+```
+
+### 画像アップロードURL取得
+
+```
+POST /api/v1/images/upload-urls
+X-Session-Id: {sessionId}
+Content-Type: application/json
+```
+
+**リクエスト:**
+
+```json
+{
+  "items": [
+    { "fileName": "photo.jpg", "contentType": "image/jpeg" }
+  ]
+}
+```
+
+**成功レスポンス（200 OK）:**
+
+```json
+{
+  "items": [
+    {
+      "imageId": "画像ID",
+      "uploadUrl": "Pre-signed URL",
+      "s3Key": "originals/xxx.jpg"
+    }
+  ]
+}
+```
+
 ### ログイン
 
 ```
@@ -393,16 +632,32 @@ Redisからセッションを削除する。フロントエンドのログアウ
 │       │   │   ├── ArtistImageResponse.java
 │       │   │   ├── ArtistResponse.java
 │       │   │   ├── CampaignResponse.java
+│       │   │   ├── CommentImageResponse.java
+│       │   │   ├── CommentProjection.java
 │       │   │   ├── CommunityTopResponse.java
+│       │   │   ├── CreateCommentRequest.java
+│       │   │   ├── CreateThreadRequest.java
 │       │   │   ├── ErrorResponse.java
 │       │   │   ├── LoginRequest.java
 │       │   │   ├── LoginResponse.java
-│       │   │   └── NewsResponse.java
+│       │   │   ├── NewsResponse.java
+│       │   │   ├── ThreadCommentResponse.java
+│       │   │   ├── ThreadDetailProjection.java
+│       │   │   ├── ThreadDetailResponse.java
+│       │   │   ├── ThreadListItemResponse.java
+│       │   │   ├── ThreadListProjection.java
+│       │   │   ├── ThreadListResponse.java
+│       │   │   ├── UploadUrlItem.java
+│       │   │   ├── UploadUrlRequest.java
+│       │   │   └── UploadUrlResponse.java
 │       │   ├── entity/             # JPAエンティティ
 │       │   │   ├── ArtistEntity.java
 │       │   │   ├── ArtistImageEntity.java
 │       │   │   ├── CampaignEntity.java
+│       │   │   ├── CommentImageEntity.java
 │       │   │   ├── NewsEntity.java
+│       │   │   ├── ThreadCommentEntity.java
+│       │   │   ├── ThreadEntity.java
 │       │   │   └── UserEntity.java
 │       │   ├── exception/          # 例外クラス
 │       │   │   ├── AuthenticationException.java
@@ -415,19 +670,26 @@ Redisからセッションを削除する。フロントエンドのログアウ
 │       │   │   ├── ArtistImageRepository.java
 │       │   │   ├── ArtistRepository.java
 │       │   │   ├── CampaignRepository.java
+│       │   │   ├── CommentImageRepository.java
 │       │   │   ├── NewsRepository.java
+│       │   │   ├── ThreadCommentRepository.java
+│       │   │   ├── ThreadRepository.java
 │       │   │   └── UserRepository.java
 │       │   ├── resource/           # RESTリソース
 │       │   │   ├── ArtistResource.java
 │       │   │   ├── CommunityResource.java
+│       │   │   ├── ImageResource.java
 │       │   │   ├── LoginResource.java
-│       │   │   └── SessionResource.java
+│       │   │   ├── SessionResource.java
+│       │   │   └── ThreadResource.java
 │       │   └── service/            # ビジネスロジック
 │       │       ├── ArtistService.java
 │       │       ├── AuthService.java
 │       │       ├── CommunityService.java
+│       │       ├── ImageService.java
 │       │       ├── PasswordService.java
 │       │       ├── SessionService.java
+│       │       ├── ThreadService.java
 │       │       └── UuidService.java
 │       └── main/resources/
 │           └── application.yaml
@@ -442,21 +704,52 @@ Redisからセッションを削除する。フロントエンドのログアウ
 │       │   ├── not-found.tsx       # 共通404エラーページ
 │       │   ├── error.tsx           # 共通エラーページ
 │       │   ├── artists/
-│       │   │   └── page.tsx        # アーティスト一覧ページ
+│       │   │   ├── page.tsx        # アーティスト一覧ページ（SSR）
+│       │   │   └── loading.tsx     # ローディングスピナー
 │       │   ├── community/
 │       │   │   └── [artistId]/
-│       │   │       └── page.tsx    # コミュニティTOPページ
+│       │   │       ├── page.tsx    # コミュニティTOPページ（SSR）
+│       │   │       ├── loading.tsx # ローディングスピナー
+│       │   │       └── threads/
+│       │   │           ├── page.tsx        # スレッド一覧ページ
+│       │   │           └── [threadId]/
+│       │   │               └── page.tsx    # スレッド詳細ページ
 │       │   └── test/
 │       │       └── page.tsx        # ヘルスチェック表示ページ
 │       ├── components/
+│       │   ├── AddCommentModal.tsx  # コメント追加モーダル（画像添付対応）
 │       │   ├── ArtistCard.tsx      # アーティストカードコンポーネント
+│       │   ├── CommentImageGrid.tsx # X(Twitter)風画像グリッド
+│       │   ├── CommunityTopContent.tsx # コミュニティTOPコンテンツ（Client Component）
+│       │   ├── CreateThreadModal.tsx # スレッド作成モーダル
 │       │   ├── Header.tsx          # 共通ヘッダーコンポーネント
-│       │   └── LoginModal.tsx      # ログインモーダルコンポーネント
+│       │   ├── ImageLightbox.tsx   # 画像ライトボックス（react-image-gallery）
+│       │   ├── LoadingSpinner.tsx  # ローディングスピナーコンポーネント
+│       │   ├── LoginModal.tsx      # ログインモーダルコンポーネント
+│       │   └── LoginPromptDialog.tsx # ログイン促進ダイアログ
 │       ├── contexts/
 │       │   └── AuthContext.tsx     # 認証コンテキスト・プロバイダー
-│       └── types/
-│           ├── artist.ts           # アーティスト型定義
-│           └── community.ts       # コミュニティ型定義
+│       ├── types/
+│       │   ├── artist.ts           # アーティスト型定義
+│       │   ├── community.ts       # コミュニティ型定義
+│       │   └── thread.ts          # スレッド・コメント型定義
+│       └── utils/
+│           ├── dateFormat.ts      # 相対日時表示ユーティリティ
+│           └── imageUtils.ts      # 画像EXIF処理ユーティリティ（exifr）
+├── image-processor/                # 画像処理サービス（Node.js + sharp）
+│   ├── Dockerfile                  # ローカル開発用
+│   ├── Makefile                    # Lambda SAMビルド用
+│   ├── package.json
+│   ├── package-lambda.json         # Lambda用依存定義
+│   └── src/
+│       ├── imageProcessor.js       # 共通画像処理ロジック
+│       ├── lambdaHandler.js        # Lambda用エントリーポイント
+│       └── localServer.js          # ローカル用エントリーポイント
+├── lambda/                         # AWS SAMテンプレート
+│   ├── template.yaml               # Lambda関数定義
+│   └── samconfig.toml              # SAMデプロイ設定
+├── minio/                          # MinIO設定ファイル
+│   └── cors.json                   # CORS設定
 ├── e2e/                            # E2E・統合テスト
 │   ├── backend/                   # Backend E2Eテスト
 │   │   └── e2e-test.sh            # curl + jq によるAPIテスト
@@ -466,19 +759,14 @@ Redisからセッションを削除する。フロントエンドのログアウ
 │       │   ├── handlers.ts
 │       │   └── setup.ts
 │       └── tests/                 # テストファイル
-│           ├── top-page.spec.ts
-│           ├── login-modal.spec.ts
-│           ├── auth-session.spec.ts
-│           ├── header-cross-page.spec.ts
-│           ├── artists.spec.ts    # アーティスト一覧ページ統合テスト
-│           └── community.spec.ts  # コミュニティTOPページ統合テスト
 ├── docker-compose.yml
-├── init-db.sql                     # DB初期化（users, artists, artist_images, campaigns, news）
+├── init-db.sql                     # DB初期化（全テーブル・初期データ）
 └── .github/workflows/
-    ├── unit-test.yml               # 単体テスト・カバレッジ検証
+    ├── unit-test.yml               # Backend単体テスト・カバレッジ検証
     ├── e2e-test.yml                # Backend E2Eテスト（Docker環境）
     ├── frontend-test.yml           # フロントエンド単体テスト
-    └── frontend-integration-test.yml # Frontend統合テスト（Playwright）
+    ├── frontend-integration-test.yml # Frontend統合テスト（Playwright）
+    └── deploy-lambda.yml           # Lambda自動デプロイ（無効化済み）
 ```
 
 ## 技術スタック
@@ -493,9 +781,31 @@ Redisからセッションを削除する。フロントエンドのログアウ
 - [JDBC Driver - PostgreSQL](https://quarkus.io/guides/datasource) - PostgreSQLドライバ
 - [SmallRye Health](https://quarkus.io/guides/smallrye-health) - ヘルスチェック
 - [Logging JSON](https://quarkus.io/guides/logging#json-logging) - JSONログ出力
+- [S3 Presigner](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/examples-s3-presign.html) - Pre-signed URL生成
 
 ### Frontend
 
-- [Next.js](https://nextjs.org/) - Reactフレームワーク
+- [Next.js](https://nextjs.org/) - Reactフレームワーク（SSR対応）
 - [TypeScript](https://www.typescriptlang.org/) - 型安全な JavaScript
 - [Tailwind CSS](https://tailwindcss.com/) - ユーティリティファーストCSS
+- [Embla Carousel](https://www.embla-carousel.com/) - カルーセルコンポーネント
+- [react-hot-toast](https://react-hot-toast.com/) - トースト通知
+- [react-image-gallery](https://github.com/xiaolin/react-image-gallery) - 画像ギャラリー・ライトボックス
+- [exifr](https://github.com/MikeKovarik/exifr) - EXIF回転情報取得
+- [Radix UI](https://www.radix-ui.com/) - UIプリミティブ（Dialog等）
+
+### 画像処理
+
+- [sharp](https://sharp.pixelplumbing.com/) - 画像リサイズ・WebP変換
+- [Express](https://expressjs.com/) - ローカルWebhookサーバ
+
+### インフラ・テスト
+
+- [Docker](https://www.docker.com/) - コンテナ化
+- [Docker Compose](https://docs.docker.com/compose/) - オーケストレーション
+- [MinIO](https://min.io/) - S3互換オブジェクトストレージ
+- [Vitest](https://vitest.dev/) - フロントエンド単体テスト
+- [Playwright](https://playwright.dev/) - フロントエンド統合テスト
+- [MSW](https://mswjs.io/) - APIモック
+- [JUnit 5](https://junit.org/junit5/) - バックエンド単体テスト
+- [JaCoCo](https://www.jacoco.org/) - コードカバレッジ
